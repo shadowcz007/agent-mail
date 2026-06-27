@@ -20,4 +20,5 @@ export interface Messages {
   theme: StringMap;
   errors: StringMap;
   agentMdHero: StringMap;
+  agentQuickAccess: StringMap;
 }

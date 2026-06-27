@@ -9,11 +9,25 @@ import { EmailInput } from "@/components/ui/EmailInput";
 import { EMAIL_SUFFIX, isStrongPassword } from "@/lib/validate";
 import { useI18n } from "@/i18n/client";
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  /** 预填邮箱(完整地址,如 mixlab@agent.qq.com);空表示手动输入 */
+  initialEmail?: string;
+}
+
+export function RegisterForm({ initialEmail }: RegisterFormProps = {}) {
   const router = useRouter();
   const { locale, t: tr } = useI18n();
   const t = tr.bind(null, "register");
   const tCommon = tr.bind(null, "common");
+
+  // 从完整邮箱推导本地部分(剥掉 @agent.qq.com 后缀)
+  const initialLocal =
+    initialEmail && initialEmail.toLowerCase().endsWith(EMAIL_SUFFIX)
+      ? initialEmail.slice(0, -EMAIL_SUFFIX.length)
+      : "";
+
+  // 受控 email 本地部分(支持 URL 预填 + 用户编辑)
+  const [emailLocal, setEmailLocal] = useState(initialLocal);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,6 +92,8 @@ export function RegisterForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <EmailInput
+        value={emailLocal}
+        onChange={setEmailLocal}
         prefixHint={t("emailHint")}
         label={t("passwordLabel") /* placeholder, EmailInput 自身无 label 渲染 */}
         hintPrefix={emailHintPrefix}

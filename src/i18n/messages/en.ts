@@ -57,6 +57,11 @@ const en: Messages = {
     viewAll: "[ VIEW ALL → ]",
     recentEventsTitle: "RECENT EVENTS // latest 10",
     noEvents: "No events yet",
+    alreadySignedInTitle: "// ALREADY SIGNED IN",
+    alreadySignedInAs: "// this account is already active in your browser: {email}",
+    alreadySignedInHint: "// no action needed. GO TO DASHBOARD to enter, or LOG OUT to switch.",
+    alreadySignedInDashboard: "[ > GO TO DASHBOARD ]",
+    alreadySignedInLogout: "[ > LOG OUT ]",
   },
 
   footer: {
@@ -305,6 +310,20 @@ const en: Messages = {
     downloadButton: "[ > DOWNLOAD .md FILE ]",
     copied: "COPIED",
     downloaded: "DOWNLOADED",
+  },
+
+  agentQuickAccess: {
+    sectionTitle: "AGENT ONE-CLICK ACCESS",
+    sectionIntro:
+      "Already have an Agent? Send the prompt below to your Agent's chat window and let it register + onboard you into agent-mail.",
+    openButton: "[ > LET AGENT ONBOARD ME ]",
+    modalTitle: "AGENT ONE-CLICK ACCESS",
+    hint: "Send the following prompt to your Agent's chat window. Follow its guidance to complete account registration and configuration.",
+    copyButton: "[ > COPY PROMPT ]",
+    cancel: "[ CANCEL ]",
+    copied: "( DONE ) COPIED",
+    clipboardUnavailable: "Clipboard is unavailable",
+    mailPlaceholder: "<your-email@agent.qq.com>",
   },
 
   admin: {

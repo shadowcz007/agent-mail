@@ -5,7 +5,197 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — Admin 详情页 + 删除 Agent:`/admin/agents/[email]` 新详情页(INFO + ALLIANCES + DANGER ZONE),复用 Dashboard `DeleteAcctButton` 组件,仅 endpoint + 跳转目标不同;新增 T4 端点 `DELETE /api/admin/agents/[email]`(不能删自己 + 唯一 admin 保护);`/admin/alliances` 底部加 `[ > BACK TO ADMIN ]` 入口(详见 §-10)。
+> **最近更新**:2026-06-27 — Agent 一键接入:`/register` 页面底部新增备用入口,弹窗显示"使用腾讯官方 agently-mail 确认邮箱 + 打开 ?register=<mail>"提示词,一键复制到 Agent 对话窗口完成注册(详见 §-12)。
+
+---
+
+## -12. Agent 一键接入 · `/register` 弹窗复制提示词
+
+**时间**:2026-06-27
+
+### 症状
+
+场景:用户**已有 Agent**(Claude / GPT / Cursor / 任何 CLI Agent),想用它来"代劳"注册 agent-mail 账号。现状:
+
+1. 注册页 `/register` 只有表单,**没有"让 Agent 帮你注册"的备用入口**
+2. 用户得自己拼凑提示词:"帮我用 agently-mail 确认我的邮箱,然后浏览器打开 https://agent-mail.mixlab.top/?register=xxx@agent.qq.com..."
+3. 若用户的 Agent 没装 `agently-mail`,提示词还要补一行"请先看 https://agent.qq.com/doc/cli-setup.md 装 CLI"
+
+整个过程**没有标准化的"分享模板"**,Agent 间互操作性差。
+
+### 根因
+
+- `/register` 页面只考虑"人类填表单"场景
+- 没有"AI-to-AI onboarding" 标准化协议(SPEC §3.7 鉴权层之外缺失 Onboarding 层)
+
+### 修复
+
+#### A. 新建 `src/app/register/AgentQuickAccessButton.tsx`(client component)
+
+- 接收 `email?: string` prop(`?email=` query param 传入)
+- 点 `[ > 让 Agent 帮我接入 ]` → 打开全屏 overlay modal
+- Modal 内容:
+  - 标题:`// AGENT 一键接入`
+  - 引导:`请将以下提示词发送到 Agent 的对话窗口,根据引导完成注册账号和配置。`
+  - `<pre>` block 显示完整提示词(自动换行 + 等宽字体)
+  - 底部:`[ > 复制提示词 ]`(primary)+ `[ 取消 ]`(secondary)
+- 提示词结构(2 段,以 `\n\n` 分隔):
+  ```
+  使用腾讯官方`agently-mail`，来确认已登录状态的邮箱地址 <mail>，浏览器打开 `https://agent-mail.mixlab.top/?register=<mail>`
+
+  如果没有安装`agently-mail`，需要初始化：请阅读 https://agent.qq.com/doc/cli-setup.md 文档，按照步骤安装并配置 Agent Mail CLI。
+  ```
+- `<mail>` 替换优先级:`props.email` > `i18n.mailPlaceholder`(`<your-email@agent.qq.com>`)
+- 复制走 `navigator.clipboard.writeText`(参考 `ApiKeyManager.tsx` + `AgentMdHero.tsx` 现有模式);不可用显示 `errors.clipboardUnavailable`
+- 复制成功 3 秒内显示 `( DONE ) 已复制`(装饰符跨语言一致)
+- ESC 键关闭 modal;点 backdrop 关闭;点 modal 内 stopPropagation 不关
+
+#### B. 注册页接入
+
+`src/app/register/page.tsx` 在主 Section 后新增第二 Section:
+
+```
+<Section title={tQuick("sectionTitle")}>
+  <PromptLine>{tQuick("sectionIntro")}</PromptLine>
+  <AgentQuickAccessButton email={prefillEmail} />
+</Section>
+```
+
+#### C. i18n
+
+新增 `agentQuickAccess` 命名空间(zh-CN + en 各 10 keys):
+- `sectionTitle` / `sectionIntro` / `openButton` / `modalTitle` / `hint` / `copyButton` / `cancel` / `copied` / `clipboardUnavailable` / `mailPlaceholder`
+
+`Messages` 类型(`src/i18n/messages/types.ts`)加 `agentQuickAccess: StringMap`。
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/app/register/AgentQuickAccessButton.tsx` | **新建**(client component + modal) |
+| `src/app/register/page.tsx` | 加第二 Section 接入按钮 |
+| `src/i18n/messages/types.ts` | Messages 加 agentQuickAccess |
+| `src/i18n/messages/zh-CN.ts` | +10 keys |
+| `src/i18n/messages/en.ts` | +10 keys |
+| `docs/SPEC.md` | §3.5 路由表 `/register` 行说明更新 |
+| `docs/LAYOUT.md` | §3.3 ASCII 加 Agent 一键接入 + modal |
+| `docs/BUGFIX.md` | 本节 §-12 |
+
+### 验证
+
+- `npx tsc --noEmit` exit=0
+- 装饰符 `( DONE )` / `//` / `[ > ]` 跨语言一致
+- 无 emoji
+- 邮箱替换 `<mail>`:传 `mixlab@agent.qq.com` → prompt 含 `mixlab@agent.qq.com` + `?register=mixlab%40agent.qq.com`(`encodeURIComponent`)
+- 空 email → fallback 到 `<your-email@agent.qq.com>` 占位
+- ESC + backdrop click + cancel button 都能关 modal
+
+### 设计决策
+
+| # | 决策 | 理由 |
+|---|---|---|
+| D1 | **放在 `/register` 而非首页** | "Agent 帮我注册"语义上属于注册流程分支;首页若加会让匿名访客困惑(他们没 Account 概念) |
+| D2 | **弹窗而非 inline** | 提示词有 5-7 行,inline 会把注册表单挤到第二屏;弹窗保证表单可继续滚动 |
+| D3 | **`<pre>` 而非 `<textarea>`** | 提示词只读 + 等宽 + 自动换行足够;`<textarea>` 暗示"可编辑"反而误导用户去改 prompt |
+| D4 | **`<mail>` 占位而非禁用按钮** | 用户可能想"先复制通用模板,稍后填邮箱再发";占位保留弹性 |
+| D5 | **复制按钮 primary + cancel secondary** | 复制是 modal 的"主任务";cancel 视觉降权 |
+| D6 | **`<mail>` 默认占位走 i18n** | zh-CN 用 `<your-email@agent.qq.com>`,en 同(协议惯例跨语言一致) |
+| D7 | **不引入新 modal 组件库** | 当前 UI 风格(直角 + 等宽 + 黑底)与 headlessui 等不兼容,自写一个 60 行的 overlay 反而最贴 DESIGN §1 |
+
+### 风险与已知限制
+
+- **`<pre>` 长 prompt 滚动**:modal 加 `max-h-[90vh] overflow-auto`,最长 5-7 行不会触发,但若未来扩展到多段可能需要加 `max-h` + `overflow-y`。
+- **clipboard API 不可用**(老浏览器 / 非 HTTPS):显示 `clipboardUnavailable` 错误,但 prompt 仍在 `<pre>` 里可见,用户可手动复制。
+- **`<pre>` 内 URL 未做 link 化**:`https://agent.qq.com/doc/cli-setup.md` 和 register URL 都是纯文本。若需要可点击,后续可改用 `<a>` 内嵌(但会破坏复制纯文本的一致性)。
+- **无国际化字符串插值**:提示词中文固定,英文 locale 下仍是中文(因为这是发给 Agent 的"指令",Agent 按中文理解更精确)。若未来需要 en-only 用户群,再做 i18n 拆分。
+
+---
+
+## -11. URL 驱动账号切换 · `/?register=<email>` 三态分流(Next.js 16 Proxy)
+
+**时间**:2026-06-27
+
+### 症状
+
+场景:用户 A(`mixlab@agent.qq.com`)想把自己验证过的邮箱账号分享给 B(让 B 用这个邮箱注册/接管),目前流程:
+
+1. A 只能**口述邮箱地址**(没有标准分享链路)
+2. B 拿到后**手动打开** `https://agent-mail.mixlab.top/register` + 手动输入邮箱
+3. 如果 B 浏览器已登录**别的** agent 账号,`POST /api/agents/register` 会返回 `EMAIL_EXISTS` → B 卡住不知道下一步
+
+### 根因
+
+- 没有"分享邮箱账号"的标准化 URL 协议
+- 首页 `/` 没有 query 参数处理入口
+- 注册页 `/register` 没有"预填邮箱"机制
+
+### 修复
+
+#### A. 新建 `src/proxy.ts`(Next.js 16 重命名 Middleware)
+
+- 仅匹配首页(`/`)
+- 解析 `?register=<email>` 参数,严格校验 `^[a-z0-9._%+-]+@agent\.qq\.com$`(不匹配静默忽略)
+- 解析当前 session(jose / Edge 兼容)
+- 三态分流:
+
+| 状态 | 条件 | 行为 |
+|---|---|---|
+| **STATE A** | anon / session 失效 | `NextResponse.redirect("/register?email=<target>")` |
+| **STATE B** | session.email !== target | clear Session Cookie + `NextResponse.redirect("/register?email=<target>")`(静默切换) |
+| **STATE C** | session.email === target | `NextResponse.next({ request: { headers: ... } })` + 注入 `x-target-register: <target>` 请求头 |
+
+#### B. 注册页 `/register?email=<full>` 预填
+
+- `src/app/register/page.tsx`:接受 `searchParams.email`,传给 `<RegisterForm initialEmail=...>`
+- `src/app/register/RegisterForm.tsx`:新增 `initialEmail?: string` prop,剥 `@agent.qq.com` 后用 `useState` 存本地部分,以受控值传给 `<EmailInput>`(原 `RegisterForm` 不接 prop,零破坏)
+
+#### C. 首页 STATE C `// ALREADY SIGNED IN` 横幅
+
+- `src/app/page.tsx`:`await headers()` 读 `x-target-register` 头,有则渲染顶部 Section
+- 内容:`( ACTIVE )` chip + `[ > GO TO DASHBOARD ]`(`LinkButton`)+ `[ > LOG OUT ]`(`<form action="/api/auth/logout" method="POST">`,复用 TopBar 模式)
+- i18n:`home.alreadySignedInTitle` / `home.alreadySignedInAs` / `home.alreadySignedInHint` / `home.alreadySignedInDashboard` / `home.alreadySignedInLogout`(×2 langs,装饰符跨语言一致)
+
+#### D. Next.js 16 Proxy 命名
+
+- Middleware 在 Next.js 16 重命名为 Proxy(`proxy.ts` / `proxy()` 函数),**文件位置不变**(仍在 `src/` 同级),`matcher` / `NextResponse.next({ request })` API 兼容
+- 文档交叉引用:SPEC §3.5.0 / LAYOUT §3.1 ASCII 草图
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/proxy.ts` | **新建**(3 态分流核心) |
+| `src/app/page.tsx` | 读 `x-target-register` 头 + 渲染 STATE C 横幅 |
+| `src/app/register/page.tsx` | 接受 `?email=` + 传给 RegisterForm |
+| `src/app/register/RegisterForm.tsx` | 新增 `initialEmail` prop + 受控 email 本地部分 |
+| `src/i18n/messages/zh-CN.ts` | +5 home.* keys |
+| `src/i18n/messages/en.ts` | +5 home.* keys |
+| `docs/SPEC.md` | §3.5 路由表加 `/` + `/register` 行;新增 §3.5.0 子节 |
+| `docs/LAYOUT.md` | §3.1 ASCII 草图加 STATE C 横幅 |
+| `docs/BUGFIX.md` | 本节 §-11 |
+
+### 验证
+
+- `npx tsc --noEmit` exit=0
+- proxy.ts 邮箱正则匹配 4 case:有效(✓)/ 缺 @agent.qq.com(忽略)/ 大小写差异(归一化)/ 空值(忽略)
+- 装饰符 `( ACTIVE )` / `// ...` 跨语言一致
+- 无 emoji
+
+### 设计决策
+
+| # | 决策 | 理由 |
+|---|---|---|
+| D1 | **用 Proxy 而非 page.tsx 处理** | Server Component 的 `cookies()` 是只读,**无法 clear Session**;Proxy 才能 `res.cookies.set(..., "", maxAge:0)` 同时 redirect |
+| D2 | **STATE B 不二次确认** | URL 是显式意图,确认冗余(用户决策) |
+| D3 | **STATE C 留在首页不跳 dashboard** | "已登录"是即时反馈,主动让用户选下一步(决策) |
+| D4 | **校验 @agent.qq.com 后缀** | 防 URL 滥用为通用邮箱探测入口(SPEC §3.7.1 邮箱后缀约束) |
+| D5 | **URL 参数不持久化** | `?register=` 用过即焚,不写入 cookie / localStorage;再次刷新就走正常首页 |
+
+### 风险与已知限制
+
+- **Proxy 默认 Edge runtime**;`verifySession` 用 `jose` 已 Edge 兼容,但**不能用 Node native 模块**(例如 `crypto.createHash`)。`src/lib/auth.ts` 的 `prisma.*` 不可在 Proxy 调用 — 本次 Proxy 故意只解析 JWT,不查 DB,性能最优。
+- **多并发 STATE B**:若同一浏览器开 2 个 tab 同时点 `/?register=X` + `/?register=Y`,两个 Proxy 会并发 `set-cookie: agent-mail.session=""`,最终 cookie 为空(后写覆盖前写)。功能正确。
+- **STATE C 头注入**:依赖 `NextResponse.next({ request: { headers } })`,这是 Next.js 16 标准做法;若未来 Next.js 改动 API,需要回看本节。
 
 ---
 

@@ -57,6 +57,11 @@ const zhCN: Messages = {
     viewAll: "[ 查看全部 → ]",
     recentEventsTitle: "最近事件 // 最新 10 条",
     noEvents: "暂无 Event",
+    alreadySignedInTitle: "// ALREADY SIGNED IN",
+    alreadySignedInAs: "// 当前浏览器已登录: {email}",
+    alreadySignedInHint: "// 无需操作。点 GO TO DASHBOARD 进入,或 LOG OUT 切换账号。",
+    alreadySignedInDashboard: "[ > GO TO DASHBOARD ]",
+    alreadySignedInLogout: "[ > LOG OUT ]",
   },
 
   footer: {
@@ -305,6 +310,20 @@ const zhCN: Messages = {
     downloadButton: "[ > 下载 .md 文件 ]",
     copied: "已复制",
     downloaded: "已下载",
+  },
+
+  agentQuickAccess: {
+    sectionTitle: "Agent 一键接入",
+    sectionIntro:
+      "已有 Agent?把以下提示词发到 Agent 的对话窗口,让 Agent 帮你完成注册并接入 agent-mail。",
+    openButton: "[ > 让 Agent 帮我接入 ]",
+    modalTitle: "AGENT 一键接入",
+    hint: "请将以下提示词发送到 Agent 的对话窗口,根据引导完成注册账号和配置。",
+    copyButton: "[ > 复制提示词 ]",
+    cancel: "[ 取消 ]",
+    copied: "( DONE ) 已复制",
+    clipboardUnavailable: "剪贴板不可用",
+    mailPlaceholder: "<your-email@agent.qq.com>",
   },
 
   admin: {

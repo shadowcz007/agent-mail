@@ -1,6 +1,10 @@
 // 首页 — Registry + 联盟 + Timeline
 // LAYOUT §3.1
+// STATE C 横幅(SPEC §3.5 + BUGFIX §-11):src/proxy.ts 在 /?register=<email>
+// 检测到当前 session === target 时,注入 x-target-register 请求头;
+// 本页读取后渲染 ALREADY SIGNED IN 横幅,提供 GO TO DASHBOARD + LOG OUT 两个出口。
 import Link from "next/link";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import {
   Section,
@@ -10,6 +14,7 @@ import {
 } from "@/components/ui/Section";
 import { ListRow } from "@/components/ui/ListRow";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { LinkButton } from "@/components/ui/Button";
 import {
   formatNumber,
   formatDateUtc8,
@@ -23,6 +28,10 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const locale = await getLocale();
   const t = getTranslator(locale, "home");
+
+  // STATE C 检测:proxy 注入的 x-target-register 头
+  const headerStore = await headers();
+  const alreadyTarget = headerStore.get("x-target-register") ?? null;
 
   const [agentCount, eventCount, allianceCount, primaryResult, recentAgents, recentEvents] =
     await Promise.all([
@@ -47,6 +56,35 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* STATE C — ALREADY SIGNED IN 横幅(仅在 /?register=<当前账号邮箱> 时显示) */}
+      {alreadyTarget && (
+        <Section title={t("alreadySignedInTitle")}>
+          <div className="border border-primary bg-bg text-on-bg p-3 flex flex-col gap-2 text-[13px] font-mono">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-on-bg">
+                {t("alreadySignedInAs", { email: alreadyTarget })}
+              </span>
+              <StatusChip tone="accent">( ACTIVE )</StatusChip>
+            </div>
+            <PromptLine>{t("alreadySignedInHint")}</PromptLine>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <LinkButton variant="primary" href="/dashboard">
+                {t("alreadySignedInDashboard")}
+              </LinkButton>
+              {/* 复用 TopBar 同样的 logout 模式(form + POST) */}
+              <form action="/api/auth/logout" method="POST">
+                <button
+                  type="submit"
+                  className="border border-outline bg-bg text-on-bg px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono hover:bg-primary hover:text-on-primary transition-colors"
+                >
+                  {t("alreadySignedInLogout")}
+                </button>
+              </form>
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* SYSTEM STATUS */}
       <Section title={t("title")}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
