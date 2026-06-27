@@ -21,6 +21,7 @@ export type ApiErrorCode =
   | "RESET_REQUEST_NOT_FOUND"
   | "FORBIDDEN"
   | "RATE_LIMITED"
+  | "LAST_ADMIN"
   | "INTERNAL_ERROR";
 
 const STATUS: Record<ApiErrorCode, number> = {
@@ -42,6 +43,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   RESET_REQUEST_NOT_FOUND: 404,
   FORBIDDEN: 403,
   RATE_LIMITED: 429,
+  LAST_ADMIN: 409,
   INTERNAL_ERROR: 500,
 };
 

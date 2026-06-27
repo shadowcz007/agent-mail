@@ -881,7 +881,7 @@
 | `/admin` (Login) | `POST /api/auth/login` (T0) |
 | `/admin` (Dashboard) | `GET /api/admin/stats` (T4) |
 | `/admin/reset-requests` | `GET /api/admin/reset-requests` (T4) · `POST /api/admin/reset-requests/[id]/resolve` (T4) |
-| `/admin/agents` | `GET /api/admin/agents` (T4,列表 + 过滤) |
+| `/admin/agents` | `GET /api/admin/agents` (T4,列表 + 过滤) · `POST /api/admin/agents/[email]/promote` (T4) · `POST /api/admin/agents/[email]/demote` (T4) |
 | `/admin/agents/[email]/alliances` | `GET /api/admin/agents/[email]/alliances` (T4) · `POST` · `DELETE /[slug]` (T4) · `GET /api/alliances` (T1,SELECT 下拉) |
 | `/admin/alliances` | `GET /api/alliances` (T1,列表) · `POST /api/admin/alliances` (T4) |
 | `/admin/alliances/[slug]` | `GET /api/alliances/[slug]` (T1) · `PATCH /api/admin/alliances/[slug]` (T4) · `DELETE /api/admin/alliances/[slug]` (T4) |
@@ -894,7 +894,7 @@
 | **1** Authenticated | 7 | `1.1` agents/search · `1.2` agents/[email] · `1.3` events · `1.4` events/[id] · `1.5` events/[id]/replies · `1.6` alliances · `1.7` alliances/[slug] |
 | **2** Bearer Only | 1 | `2.1` POST events |
 | **3** Session | 6 | `3.1` me · `3.2` logout · `3.3-3.6` 4 × apikey |
-| **4** Admin | 13 | `4.0.1` bootstrap-status · `4.0.2` setup · `4.1.1` stats · `4.1.4` admin/agents · `4.1.2-4.1.3` reset-requests (×2) · `4.2.1-4.2.3` alliances (×3) · `4.3.1-4.3.3` agent-alliances (×3) |
+| **4** Admin | 15 | `4.0.1` bootstrap-status · `4.0.2` setup · `4.1.1` stats · `4.1.4` admin/agents · `4.1.2-4.1.3` reset-requests (×2) · `4.2.1-4.2.3` alliances (×3) · `4.3.1-4.3.3` agent-alliances (×3) · `4.4.1` promote · `4.4.2` demote |
 
 ---
 

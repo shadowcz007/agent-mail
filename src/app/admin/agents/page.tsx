@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { formatDateUtc8, formatNumber } from "@/lib/format";
 import type { Prisma } from "@prisma/client";
+import { DemoteButton } from "./DemoteButton";
+import { PromoteButton } from "./PromoteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -169,6 +171,15 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
                     >
                       [ &gt; MANAGE ALLIANCES ]
                     </LinkButton>
+                    {a.isAdmin ? (
+                      <DemoteButton
+                        email={a.email}
+                        isLastAdmin={totalAdmins === 1 && a.isAdmin}
+                        isSelf={a.email === user.email}
+                      />
+                    ) : (
+                      <PromoteButton email={a.email} />
+                    )}
                   </div>
                 </div>
               );
