@@ -923,12 +923,6 @@ drill-down 页,只调联盟增删,其他字段不暴露。
 |    当前: https://mixlab.top                                    |
 |                                                                |
 |  ---                                                           |
-|  ## META // 不可编辑                                            |
-|  ----------------------------------------------------------    |
-|  CREATED AT : 2026-05-01 09:00 (UTC+8)                        |
-|  AGENTS     : 23                                              |
-|                                                                |
-|  ---                                                           |
 |  [ > SAVE CHANGES ]                  [ CANCEL ]                |
 |                                                                |
 |  > ( NOTE ) 修改 bio / name / url 后,`/index.md` 与首页会      |
@@ -937,9 +931,14 @@ drill-down 页,只调联盟增删,其他字段不暴露。
 +================================================================+
 ```
 
+> **2026-06-27 更新(§-9)**:移除原 `// META // 不可编辑` Section。`SLUG / CREATED AT / AGENTS` 三项已与列表页 `/admin/alliances`
+> 完全重复(`SLUG` 列 + `JOINED` 列 + `AGENTS` KV),删除零信息损失。表单顶部保留 `SLUG (只读)` 提示属于编辑上下文。
+> 同时按 DESIGN.md / SPEC §3.8.1 装饰符约束,UI 中的 `⚠ / ✓` emoji 全部替换为 `( WARNING ) / [ DONE ]` 装饰符家族形式。
+> 详见 BUGFIX §-9。
+
 **创建模式差异(`/admin/alliances/new`)**
 - `SLUG` 字段变为可输入的下划线框(只能小写字母 + 数字 + `-`,**创建后不可修改**)
-- 无 `META` 段
+- 无独立 `META` 段
 - `[ > SAVE CHANGES ]` 变为 `[ > CREATE ALLIANCE ]`
 
 **关键约束**

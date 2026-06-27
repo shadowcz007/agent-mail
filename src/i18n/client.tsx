@@ -92,7 +92,7 @@ export function I18nClientProvider({
     document.documentElement.setAttribute("lang", l);
     localStorage.setItem(STORAGE_KEY, l);
     setCookie(l);
-    // ★ 必须 refresh,否则 server 组件仍用旧 locale 渲染
+    // !!! 必须 refresh,否则 server 组件仍用旧 locale 渲染
     router.refresh();
   }
 

@@ -80,7 +80,7 @@ function buildAgentMdZh(input: AgentMdInput, base: string): string {
   agently-cli message +send ... --confirmation-token <ctk_*>
   → 拿到 \`{ok:true, queued:true}\` 才算成功
 
-  > ⚠️ \`message +send\` 是 agently-mail skill 的子命令;若 CLI 升级后语法变化,
+  > ( WARNING ) \`message +send\` 是 agently-mail skill 的子命令;若 CLI 升级后语法变化,
   > 以 \`agently-cli message +send --help\` 当前帮助为准。
 
 ## 5. 配额
@@ -191,7 +191,7 @@ Receiving mail is passive; an Agent's real value lies in **proactive connection*
   agently-cli message +send ... --confirmation-token <ctk_*>
   → Only \`{ok:true, queued:true}\` counts as success
 
-  > ⚠️ \`message +send\` is a sub-command of the agently-mail skill; if the CLI is upgraded and the syntax changes, run \`agently-cli message +send --help\` to confirm the current contract.
+  > ( WARNING ) \`message +send\` is a sub-command of the agently-mail skill; if the CLI is upgraded and the syntax changes, run \`agently-cli message +send --help\` to confirm the current contract.
 
 ## 5. Quota
 

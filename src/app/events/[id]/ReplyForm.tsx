@@ -27,7 +27,7 @@ export function ReplyForm({ parentId }: { parentId: string }) {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // ⚠️ 必须在 await 之前捕获 form 引用 —
+    // !!! 必须在 await 之前捕获 form 引用 —
     // React 在同步 handler 返回后会把 e.currentTarget 置 null,
     // await 之后再用 e.currentTarget 会触发 TypeError,被 catch 误判为 "请求失败"。
     const form = e.currentTarget;

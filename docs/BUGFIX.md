@@ -5,7 +5,7 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — Agent.md 下载突出:dashboard WELCOME 后置顶新增 AGENT.MD Section(两个并列按钮:**复制为主按钮(默认动作)** + 下载 .md 为次按钮),从原本埋在 `/dashboard/apikey` 末尾提升为首屏可见(详见 §-8)。
+> **最近更新**:2026-06-27 — 装饰符合规清理:全项目 ⚠ / ✓ / ⚠️ / ★ emoji 替换为 SPEC §3.8.1 装饰符家族(`( WARNING )` / `[ DONE ]` / `!!!`),共 14 处(UI 8 + Agent.md 模板 2 + 开发者注释 4);同步移除 `/admin/alliances/[slug]` 编辑页 `// META // 不可编辑` Section(3 项元信息与列表页完全重复)(详见 §-9)。
 
 ---
 
@@ -521,6 +521,113 @@ export function AgentMdHero({ email, locale }: { email: string; locale: string }
 | `src/i18n/messages/en.ts` | +7 keys (新 namespace `agentMdHero`) |
 | `docs/LAYOUT.md` | §3.5 dashboard 草图加 AGENT.MD Section + 更新注释引用 §-8 |
 | `docs/BUGFIX.md` | 顶部最近更新 + 本节(§-8)+ 修复统计表 + Git 提交表 |
+
+---
+
+## -9. 装饰符清理 · 全项目 ⚠️ / ✓ / ★ emoji 替换 + 元信息 Section 简化
+
+**时间**:2026-06-27
+
+### 症状
+
+LAYOUT §5 设计要点 Checklist 第 1079 行明确禁止 emoji,但代码 + 字典 + Agent.md 模板里仍有:
+- **UI 文本(渲染给用户)**:`⚠ 确认删除` / `⚠ 移交管理员` / `✓ 已是管理员` / `✓ 已降级` — zh-CN.ts + en.ts 共 8 处
+- **Agent.md 模板**(用户复制到本地,公开契约):`> ⚠️ \`message +send\`` — 中文 + 英文版 2 处
+- **开发者注释**:`// ⚠️ 注意:` / `// ★ 必须 refresh` 等 4 处
+
+另外 `/admin/alliances/[slug]` 编辑页底部的"// META // 不可编辑"Section 显示 3 项元信息
+(SLUG / CREATED AT / AGENTS),**全部与列表页 `/admin/alliances` 重复**,admin 看完列表点 EDIT
+进详情后看到的全是已知信息。
+
+### 根因
+
+1. **emoji**:§-5(2026-06-27 commit `c95e0e5`)清理了 HEADER STRIP 冗余装饰符 + 7 处硬编码英文,
+   但**只检查了字典值与 UI 文本**,**未做 emoji 巡检**;DESIGN.md / LAYOUT §5 的"无 emoji"约束
+   没在 grep 巡检脚本中量化(无法 `grep "⚠"` 因为当时没人主动加,只有历史遗留)。
+2. **元信息 Section**:`§-2` i18n 改造(commit `8819eee`)新增了 `allianceMetaTitle` 等 5 个 key,
+   但当时 admin/alliances 列表页还没显示 `JOINED` 列(后加),导致详情页的 META Section 与列表页完全重复却无人发现。
+
+### 修复
+
+#### A. 全项目 emoji 替换为 SPEC §3.8.1 装饰符家族
+
+**8 处 UI 文本**:
+
+| zh-CN 前 → 后 | en 前 → 后 |
+|---|---|
+| `⚠ 确认删除` → `( WARNING ) 确认删除` | `⚠ CONFIRM DELETE` → `( WARNING ) CONFIRM DELETE` |
+| `⚠ 移交管理员 (系统唯一)` → `( WARNING ) 移交管理员 (系统唯一)` | `⚠ TRANSFER ADMIN (sole admin)` → `( WARNING ) TRANSFER ADMIN (sole admin)` |
+| `✓ 已是管理员` → `[ DONE ] 已是管理员` | `✓ ADMIN NOW` → `[ DONE ] ADMIN NOW` |
+| `✓ 已降级` → `[ DONE ] 已降级` | `✓ DONE` → `[ DONE ] DONE` |
+
+**2 处 Agent.md 模板**(zh-CN + en):
+- `> ⚠️ \`message +send\`` → `> ( WARNING ) \`message +send\``
+
+**4 处开发者注释**:
+- `// ⚠️ 注意:` → `// !!! 注意:`
+- `//   ⚠️ 当前 schema` → `// !!! 当前 schema`
+- `// ⚠️ 必须在 await` → `// !!! 必须在 await`
+- `// ★ 必须 refresh` → `// !!! 必须 refresh`
+
+**SPEC §3.8.1 装饰符家族补强**(本轮):
+- 括号包裹:`( WARNING )` / `( DONE )` / `( NOTE )` / `( ERROR )`
+- 方括号包裹:`[ > ... ]` / `[ DONE ]` / `[ ... ]` / `[ 01 ]`
+- 斜杠:`//` / `/` / `>` / `_`
+- **禁止 emoji**(`⚠️` / `✓` / `⭐` / `🚫` 等)无论 UI / 注释 / Agent.md 模板
+
+#### B. 移除 `/admin/alliances/[slug]` 元信息 Section
+
+`src/app/admin/alliances/[slug]/page.tsx` 整段删除 `<Section title={t("allianceMetaTitle")}>`(L61-67 原),
+同时移除 import 链 `formatDateTimeUtc8` / `formatNumber`(仅 META 用)。
+
+**保留**:
+- form 顶部 SLUG (只读) 提示 — 属于表单上下文,让 admin 知道当前编辑哪个 slug
+- form 内相关 key:`allianceReadOnly` / `allianceSlugLabel` / `allianceEditSlugHint` 继续用
+
+**删除 4 个 key**(只 META Section 用):
+- `allianceMetaTitle` / `allianceMetaSlugLabel` / `allianceMetaCreatedLabel` / `allianceMetaAgentsLabel`
+
+**保留 3 个 key**(form 仍用):
+- `allianceReadOnly` / `allianceSlugLabel` / `allianceEditSlugHint`
+
+### 统计
+
+| 维度 | 数量 |
+|---|---|
+| emoji 替换处数 | **14**(UI 8 + Agent.md 2 + 注释 4) |
+| 删除 i18n key | **8**(4 × 2 langs,只 META 用) |
+| 保留 i18n key | **6**(3 × 2 langs,form 仍用) |
+| 修改文件 | **11**(2 dict + 4 source + Agent.md 模板 + 4 docs) |
+| tsc | exit=0 |
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/i18n/messages/zh-CN.ts` | 8 处 UI 替换 + 删 4 个 META key |
+| `src/i18n/messages/en.ts` | 8 处 UI 替换 + 删 4 个 META key |
+| `src/app/admin/alliances/[slug]/page.tsx` | 删整段 META Section + 移除 2 个 import |
+| `src/lib/agent-md.ts` | 2 处 ⚠️ → `( WARNING )`(zh + en 模板) |
+| `src/app/dashboard/DeleteAcctButton.tsx` | 注释 ⚠️ → !!! |
+| `src/app/api/agents/[email]/route.ts` | 注释 ⚠️ → !!! |
+| `src/app/events/[id]/ReplyForm.tsx` | 注释 ⚠️ → !!! |
+| `src/i18n/client.tsx` | 注释 ★ → !!! |
+| `docs/SPEC.md` | §3.8.1 装饰符家族补强 |
+| `docs/LAYOUT.md` | §3.13.3 草图删 META Section + 注释引用 §-9 |
+| `docs/BUGFIX.md` | 顶部最近更新 + 本节(§-9)+ 修复统计表 + Git 提交表 |
+
+### 验证
+
+```bash
+# 1. 全项目 emoji 巡检(应为空)
+grep -rnP "[\x{2600}-\x{27BF}\x{1F300}-\x{1FAFF}\x{2700}-\x{27BF}\x{2B00}-\x{2BFF}]" src/
+
+# 2. tsc
+npx tsc --noEmit
+
+# 3. form 用 key 仍在
+grep -E "allianceReadOnly|allianceSlugLabel|allianceEditSlugHint" src/i18n/messages/zh-CN.ts src/i18n/messages/en.ts
+```
 
 ---
 
@@ -1372,23 +1479,26 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | 联盟主/从改造 | 1(§-6:`Alliance.isPrimary` + 注册自动归入) |
 | i18n 全面本地化 | 1(§-7:zh-CN 主体全量中文化 + dashboard admin 入口) |
 | Agent.md 下载突出 | 1(§-8:dashboard 置顶 AGENT.MD Section + 复制为默认动作) |
+| 装饰符合规清理 | 1(§-9:全项目 ⚠ / ✓ / ⚠️ / ★ emoji 替换 + 元信息 Section 简化) |
 
 | 文件改动统计 | 数量 |
 |---|---|
 | 新建文件 | 13(+ 1:`AgentMdHero.tsx`) |
-| 修改文件 | 19(+ 1:`dashboard/page.tsx` 插入新 Section) |
+| 修改文件 | 20(+ 1:`admin/alliances/[slug]/page.tsx` 删 META Section) |
 | 新增 API 端点 | 3(promote / demote / self-delete) |
 | 新增 API 字段 | 6(WEAK_PASSWORD 3 子类 + isPrimary×2 + primaryAllianceSlug) |
 | 新增错误码 | 1(LAST_ADMIN) |
 | 新增公共页面 | 2(`/agents`、`/events`) |
 | 新增 UI 组件 | 5(+1:`AgentMdHero`,并列 2 按钮 + 复制默认) |
 | 新增字典 key | 275(§-2:248 + §-5:9 + §-6:13 + §-7:1 + §-8:14) |
+| 删除字典 key | 8(§-9:4 × 2 langs,META Section 用) |
 | 新增 Prisma 字段 | 1(`Alliance.isPrimary` + 索引) |
 | 新增 i18n 命名空间 | 14(+ 1:`agentMdHero`) |
 
 | Git 提交(全部已推送 main) | 内容 |
 |---|---|
-| 本轮(§-8) | feat: Agent.md Hero · dashboard 置顶 + 复制默认动作 |
+| 本轮(§-9) | refactor: 全项目 emoji 替换为装饰符家族 + 元信息 Section 简化 |
+| `8558590` | feat: Agent.md Hero · dashboard 置顶 + 复制默认动作(§-8) |
 | `7e6a7eb` | feat(i18n): zh-CN 主体全量中文化 + dashboard admin 入口(§-7) |
 | `8819eee` | feat: full i18n + Agent.md Outreach SOP + 删 2 个 GUI 按钮(67 files, +2934/-611) |
 | `f604e8a` | feat: enable [ DELETE ACCT ] 账户自删 |

@@ -1,7 +1,7 @@
 // /api/agents/[email] — Tier 1 / Tier 3
 // GET — 公开主页
 // DELETE — T3 Session,永久删除当前 session 对应的 agent 账户。
-//   ⚠️ 当前 schema Event.agent 是 onDelete: Cascade — 删 agent 会同时删其所有 events。
+//   !!! 当前 schema Event.agent 是 onDelete: Cascade — 删 agent 会同时删其所有 events。
 //   约束:
 //     - 只能删除自己(其他 email → 403 FORBIDDEN)
 //     - 如果是最后一个 admin 且 isAdmin → 409 LAST_ADMIN(必须先 demote 或 transfer)

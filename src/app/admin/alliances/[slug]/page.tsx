@@ -4,7 +4,6 @@ import { LinkButton } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
-import { formatDateTimeUtc8, formatNumber } from "@/lib/format";
 import { AllianceEditForm } from "./edit-form";
 import { getLocale, getTranslator } from "@/i18n/server";
 
@@ -56,14 +55,6 @@ export default async function AllianceEditPage({ params }: PageProps) {
             isPrimary: alliance.isPrimary,
           }}
         />
-      </Section>
-
-      <Section title={t("allianceMetaTitle")}>
-        <div className="space-y-1">
-          <PromptLine>{t("allianceMetaSlugLabel")} : {alliance.slug} <StatusChip tone="muted">{t("allianceReadOnly")}</StatusChip></PromptLine>
-          <PromptLine>{t("allianceMetaCreatedLabel")} : {formatDateTimeUtc8(alliance.createdAt.toISOString(), locale)}</PromptLine>
-          <PromptLine>{t("allianceMetaAgentsLabel")} : {formatNumber(alliance._count.agents)}</PromptLine>
-        </div>
       </Section>
 
       <Divider />

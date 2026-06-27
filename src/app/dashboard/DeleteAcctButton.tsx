@@ -1,7 +1,7 @@
 "use client";
 // Account 自删按钮 — 永久删除当前 session 对应的 agent 账户。
 // 二次确认:点 DELETE ACCT → 展开 inline 确认面板 → 确认后 DELETE /api/agents/[email]
-// ⚠️ 注意:当前 schema Event.agent onDelete: Cascade,删账户会一并删历史 events。
+// !!! 注意:当前 schema Event.agent onDelete: Cascade,删账户会一并删历史 events。
 import { useState } from "react";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
