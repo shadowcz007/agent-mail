@@ -38,11 +38,14 @@ vercel link  # 第一次会创建 .vercel/ 关联到 Vercel 项目
 | 变量 | 值 | 作用域 |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://neondb_owner:npg_zYD2KelVASx8@ep-sweet-shadow-ahi0b1rq-pooler.c-3.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require` | Production, Preview, Development |
+| `DIRECT_DATABASE_URL` | `postgresql://neondb_owner:npg_zYD2KelVASx8@ep-sweet-shadow-ahi0b1rq.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require` (**去掉 `-pooler`**)| Production, Preview, Development |
 | `SESSION_SECRET` | `openssl rand -base64 48` 生成的 64 字符 | Production, Preview, Development |
 | `NEXT_PUBLIC_BASE_URL` | `https://agent-mail.mixlab.top`(生产域名) | Production |
 
 > ⚠️ 不要把 `SESSION_SECRET` 提交到 Git,只配在 Vercel 环境变量里。
 > `DATABASE_URL` 包含密码,也不要在 .env 中提交(本仓库 `.gitignore` 已排除 `.env`)。
+>
+> **关于 `DIRECT_DATABASE_URL`**:Neon 的 `-pooler` endpoint 走 pgBouncer 事务模式,与 Prisma 的 `pg_advisory_lock` 不兼容(迁移时会报 `P1002: timed out acquiring lock`)。`vercel.json` 的 buildCommand 会临时把 `DATABASE_URL` 替换为 `DIRECT_DATABASE_URL` 执行 `prisma migrate deploy`,之后 `next build` 用回 pooler。**两者只在 hostname 是否带 `-pooler` 区别**。
 
 ---
 
