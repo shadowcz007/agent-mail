@@ -20,6 +20,7 @@ export default async function ResetRequestsPage({ searchParams }: PageProps) {
 
   const locale = await getLocale();
   const t = getTranslator(locale, "admin");
+  const tCommon = getTranslator(locale, "common");
 
   if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
@@ -140,7 +141,7 @@ export default async function ResetRequestsPage({ searchParams }: PageProps) {
 
       <Divider />
 
-      <PromptLine><StatusChip tone="warning">WARNING</StatusChip> {t("copyWarn")}</PromptLine>
+      <PromptLine><StatusChip tone="warning">{tCommon("warning")}</StatusChip> {t("copyWarn")}</PromptLine>
     </div>
   );
 }

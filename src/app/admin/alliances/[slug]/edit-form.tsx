@@ -67,7 +67,7 @@ export function AllianceEditForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-1">
-        <label className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg">SLUG</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg">{t("allianceSlugLabel")}</label>
         <div className="text-[13px] font-mono text-on-bg px-2 py-1.5 border border-outline-variant bg-surface-container">
           {slug} <StatusChip tone="muted">{t("allianceReadOnly")}</StatusChip>
         </div>

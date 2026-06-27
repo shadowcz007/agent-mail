@@ -5,7 +5,109 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — Commit `8819eee` · i18n 改造 + Agent.md Outreach SOP + 删除 2 个 GUI 按钮(PUBLISH EVENT / SEND EMAIL)统一交付(详见 §-4)。
+> **最近更新**:2026-06-27 — i18n 补漏:删冗余 HEADER STRIP 装饰符 + 7 处硬编码英文 UI 接入字典(STATUS chip / Section title / KV 标签 / H1 / form label)(详见 §-5)。
+
+---
+
+## -5. i18n 补漏 · 删 HEADER STRIP 装饰符 + 7 处硬编码 UI 接入字典
+
+**时间**:2026-06-27
+
+### 症状
+
+§-2 的 i18n 改造(commit `8819eee`)虽覆盖了 17 页面 + 13 form/button 组件,
+但**漏掉了零散的硬编码英文 UI 字符串**,EN locale 下仍是"半中半英"状态:
+
+1. **Section title 硬编码**:`<Section title="AGENT">`(admin/agents/[email]/alliances 页面)
+2. **StatusChip 文字硬编码**:`<StatusChip>NOTE</StatusChip>` / `<StatusChip>WARNING</StatusChip>` / `<StatusChip>ADMIN</StatusChip>`(4 处)
+3. **H1 硬编码**:`<H1>EVENT BOARD</H1>`(`/events` 页)
+4. **KV 字段标签硬编码**:`NAME` / `JOINED` / `AGENTS` / `BIO` / `URL` / `AUTHOR` / `POSTED` / `REPLIES` / `TYPE` / `SLUG`(10+ 处)
+5. **Form label 硬编码**:`<label>SLUG</label>`(edit-form)
+6. **整个 /events 页没接 i18n**:完全没有 `getLocale()` / `getTranslator()` 调用
+7. **冗余装饰符**:`HEADER STRIP // {title}` 中的 "HEADER STRIP" 4 个英文单词**没增加信息密度**,
+   中文 UI 上反而是冗余噪声
+
+### 根因
+
+§-2 改造时,主要靠 `grep "t("` 反查字典引用,**漏了正向扫"硬编码英文"**。
+同时装饰符 `HEADER STRIP // ` 被原样保留,没有评估其"非冗余"性。
+
+### 修复
+
+#### A. 删除冗余 HEADER STRIP 装饰符
+`src/components/ui/Section.tsx` 第 17 行:
+```diff
+- HEADER STRIP // {title}
++ // {title}
+```
+理由:`//` 已是项目内高频装饰符(跨语言一致),`HEADER STRIP` 这 4 个英文单词对 UI 信息无贡献。
+保留 `//` 视觉锚点即可,SPEC §3.8.1 装饰符清单同步更新。
+
+#### B. /events 页面接入 i18n
+原 `src/app/events/page.tsx` **完全没调用** `getLocale()` / `getTranslator()`,
+所有 UI 文本(H1、Section title、TYPE 过滤标签、KV 字段)都是硬编码英文。
+本轮:
+- 加 `getLocale()` / `getTranslator(locale, "events")` 初始化
+- 5 处硬编码文本接入字典
+- `events.h1Title` / `events.kvPosted` 是新增的字典 key(zh-CN/en 各 1 个)
+
+#### C. StatusChip 文字接入字典
+- 4 处 `<StatusChip>XXX</StatusChip>` 改用 `{tCommon("warning" | "note" | "adminChip")}`
+- 涉及文件:admin/reset-requests/page.tsx · admin/agents/[email]/alliances/page.tsx · admin/alliances/[slug]/page.tsx · agents/page.tsx
+
+#### D. KV 字段标签 + Section title 接入字典
+- `admin/agents/[email]/alliances/page.tsx`:2 处(NAME / JOINED)+ 1 处 Section title "AGENT"
+- `admin/alliances/page.tsx`:5 处(NAME / AGENTS / BIO / URL / JOINED)
+- `admin/alliances/[slug]/edit-form.tsx`:1 处 label "SLUG"
+- `events/page.tsx`:4 处(AUTHOR / POSTED / REPLIES / TYPE)+ 1 处 H1
+
+字典新增 key:
+- `common.adminChip` = "ADMIN"
+- `admin.agentSectionTitle` / `admin.allianceKvName` / `admin.allianceKvBio` / `admin.allianceKvUrl` / `admin.allianceKvAgents` / `admin.allianceKvJoined` / `admin.allianceSlugLabel`
+- `events.h1Title` / `events.kvPosted`
+- `alliances.kvBio`
+
+(zh-CN.ts + en.ts 同步加)
+
+### 统计
+
+| 维度 | 数量 |
+|---|---|
+| 修改文件 | **7**(.tsx) |
+| 修改字典 | 2(zh-CN + en) |
+| 新增字典 key | **9** |
+| 替换硬编码 | **15 处** |
+| 协议层变更 | **0** |
+| tsc | exit=0 |
+
+### 验证
+
+```bash
+# EN locale 下扫描所有 >UPPERCASE< JSX 文本(应无残留)
+grep -rnE '>[A-Z][A-Z 0-9_/:-]{3,}<' src/app/ --include="*.tsx"
+# 期望: 空
+```
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/components/ui/Section.tsx` | 删 "HEADER STRIP",保留 "//" |
+| `src/app/admin/agents/[email]/alliances/page.tsx` | 3 处 + 加 tCommon |
+| `src/app/admin/agents/page.tsx` | 1 处 + 加 tCommon(注:实际是 agents/page.tsx)|
+| `src/app/admin/alliances/page.tsx` | 5 处 |
+| `src/app/admin/alliances/[slug]/edit-form.tsx` | 1 处 label |
+| `src/app/admin/alliances/[slug]/page.tsx` | 1 处 + 加 tCommon |
+| `src/app/admin/reset-requests/page.tsx` | 1 处 + 加 tCommon |
+| `src/app/agents/page.tsx` | 1 处 + 加 tCommon |
+| `src/app/events/page.tsx` | 整页接入 i18n + 5 处替换 |
+| `src/i18n/messages/{zh-CN,en}.ts` | 各加 9 个 key |
+| `docs/SPEC.md` | §3.8.1 装饰符清单更新 |
+| `docs/BUGFIX.md` | 新增本节(§-5) |
+
+---
+
+## -4. i18n 改造 + Agent.md Outreach SOP + 删除 2 个 GUI 按钮(总览)
 
 ---
 

@@ -19,6 +19,7 @@ export default async function AllianceEditPage({ params }: PageProps) {
 
   const locale = await getLocale();
   const t = getTranslator(locale, "admin");
+  const tCommon = getTranslator(locale, "common");
 
   if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
@@ -73,7 +74,7 @@ export default async function AllianceEditPage({ params }: PageProps) {
       </div>
 
       <PromptLine>
-        <StatusChip tone="default">NOTE</StatusChip> {t("allianceEditNoteBody")}
+        <StatusChip tone="default">{tCommon("note")}</StatusChip> {t("allianceEditNoteBody")}
       </PromptLine>
     </div>
   );

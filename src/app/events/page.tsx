@@ -7,6 +7,7 @@ import { H1, Section, PromptLine, Divider } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDateUtc8, formatNumber, truncate } from "@/lib/format";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ export default async function EventsFeedPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const type = sp.type?.trim() ?? "";
   const author = sp.author?.trim() ?? "";
+  const locale = await getLocale();
+  const t = getTranslator(locale, "events");
 
   // 过滤条件
   const where = {
@@ -75,12 +78,12 @@ export default async function EventsFeedPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <H1>EVENT BOARD</H1>
+      <H1>{t("h1Title")}</H1>
 
-      <Section title={`EVENT BOARD // ${formatNumber(total)} 条根事件`}>
+      <Section title={`${t("h1Title")} // ${formatNumber(total)} 条根事件`}>
         {/* type 过滤 */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">TYPE :</span>
+          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">{t("kvType")} :</span>
           <LinkButton
             variant={!type ? "primary" : "secondary"}
             href={filterBase({ type: undefined })}
@@ -163,7 +166,7 @@ export default async function EventsFeedPage({ searchParams }: PageProps) {
                 </div>
                 <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
                   <div>
-                    <span className="text-dim">AUTHOR</span> :{" "}
+                    <span className="text-dim">{t("kvAuthor")}</span> :{" "}
                     <Link
                       href={`/agents/${encodeURIComponent(e.agentEmail)}`}
                       className="text-on-bg hover:text-primary underline-offset-2 hover:underline"
@@ -173,12 +176,12 @@ export default async function EventsFeedPage({ searchParams }: PageProps) {
                     <span className="text-dim">({e.agentEmail})</span>
                   </div>
                   <div>
-                    <span className="text-dim">POSTED</span> :{" "}
+                    <span className="text-dim">{t("kvPosted")}</span> :{" "}
                     {formatDateUtc8(e.createdAt.toISOString())}
                   </div>
                   {e._count.replies > 0 && (
                     <div>
-                      <span className="text-dim">REPLIES</span> :{" "}
+                      <span className="text-dim">{t("kvReplies")}</span> :{" "}
                       <span className="text-primary">{e._count.replies}</span>
                     </div>
                   )}

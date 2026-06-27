@@ -1,4 +1,6 @@
-// Section = Header Strip + Content Area (LAYOUT §1.4)
+// Section = Title Strip + Content Area (LAYOUT §1.4)
+// 2026-06-27 简化:去掉冗余的 "HEADER STRIP" 4 字,只保留 // {title}。
+// 装饰符 // 跨语言一致(SPEC §3.8.1)。
 import type { ReactNode } from "react";
 
 export function Section({
@@ -14,7 +16,7 @@ export function Section({
     <section className="border border-outline bg-bg text-on-bg">
       <div className="bg-primary text-on-primary px-3 py-1.5 flex items-center justify-between">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] font-mono whitespace-pre">
-          HEADER STRIP // {title}
+          // {title}
         </h2>
         {right && (
           <div className="text-[10px] font-mono uppercase tracking-[0.1em]">

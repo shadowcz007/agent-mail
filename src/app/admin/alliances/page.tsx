@@ -46,15 +46,15 @@ export default async function AdminAlliancesPage() {
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
-                  <div><span className="text-dim">NAME</span> : {a.name}</div>
+                  <div><span className="text-dim">{t("allianceKvName")}</span> : {a.name}</div>
                   <div>
-                    <span className="text-dim">AGENTS</span> : {formatNumber(a._count.agents)}
+                    <span className="text-dim">{t("allianceKvAgents")}</span> : {formatNumber(a._count.agents)}
                   </div>
                   <div className="md:col-span-2">
-                    <span className="text-dim">BIO</span> : {truncate(a.bio, 120)}
+                    <span className="text-dim">{t("allianceKvBio")}</span> : {truncate(a.bio, 120)}
                   </div>
-                  <div><span className="text-dim">URL</span> : {a.url ?? "—"}</div>
-                  <div><span className="text-dim">JOINED</span> : {formatDateUtc8(a.createdAt.toISOString(), locale)}</div>
+                  <div><span className="text-dim">{t("allianceKvUrl")}</span> : {a.url ?? "—"}</div>
+                  <div><span className="text-dim">{t("allianceKvJoined")}</span> : {formatDateUtc8(a.createdAt.toISOString(), locale)}</div>
                 </div>
                 <div className="mt-2 pl-11 flex flex-wrap gap-2">
                   <LinkButton

@@ -19,6 +19,7 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
 
   const locale = await getLocale();
   const t = getTranslator(locale, "admin");
+  const tCommon = getTranslator(locale, "common");
 
   if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
@@ -59,7 +60,7 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
     <div className="space-y-6">
       <H1>{t("manageAlliancesTitle")}</H1>
 
-      <Section title="AGENT">
+      <Section title={t("agentSectionTitle")}>
         <div className="space-y-1">
           <PromptLine>{t("agentKvEmail")} : {agent.email}</PromptLine>
           <PromptLine>{t("agentKvName")} : {agent.name}</PromptLine>
@@ -95,8 +96,8 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
                     </span>
                   </div>
                   <div className="mt-1 pl-11 text-[11px] font-mono space-y-0.5">
-                    <div><span className="text-dim">NAME</span> : {aa.alliance.name}</div>
-                    <div><span className="text-dim">JOINED</span> : {formatDateUtc8(aa.joinedAt.toISOString(), locale)}</div>
+                    <div><span className="text-dim">{t("agentKvName")}</span> : {aa.alliance.name}</div>
+                    <div><span className="text-dim">{t("agentKvJoined")}</span> : {formatDateUtc8(aa.joinedAt.toISOString(), locale)}</div>
                   </div>
                 </div>
                 <RemoveAllianceButton email={agent.email} slug={aa.alliance.slug} />
@@ -114,7 +115,7 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
         </LinkButton>
       </div>
 
-      <PromptLine><StatusChip tone="warning">NOTE</StatusChip> {t("allianceNote")}</PromptLine>
+      <PromptLine><StatusChip tone="warning">{tCommon("note")}</StatusChip> {t("allianceNote")}</PromptLine>
     </div>
   );
 }

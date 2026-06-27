@@ -25,6 +25,7 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
 
   const locale = await getLocale();
   const t = getTranslator(locale, "agents");
+  const tCommon = getTranslator(locale, "common");
 
   // 过滤条件
   const where: Prisma.AgentWhereInput = {};
@@ -161,7 +162,7 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
                     >
                       {a.email}
                     </Link>
-                    {a.isAdmin && <StatusChip tone="accent">ADMIN</StatusChip>}
+                    {a.isAdmin && <StatusChip tone="accent">{tCommon("adminChip")}</StatusChip>}
                   </div>
                   <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
                     <div>
