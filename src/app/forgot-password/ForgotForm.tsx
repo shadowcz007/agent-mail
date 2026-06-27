@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Input";
+import { EmailInput } from "@/components/ui/EmailInput";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { EMAIL_SUFFIX } from "@/lib/validate";
@@ -12,7 +12,6 @@ export function ForgotForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [emailLocal, setEmailLocal] = useState("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,27 +64,7 @@ export function ForgotForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <Field
-        label="EMAIL"
-        hint={`完整地址:${emailLocal ? `${emailLocal}${EMAIL_SUFFIX}` : EMAIL_SUFFIX}`}
-      >
-        <div className="flex items-center gap-0 border-b border-outline-variant focus-within:border-primary">
-          <span className="text-[13px] font-mono text-dim pl-2 before:content-['>'] before:mr-2">
-            [_
-          </span>
-          <input
-            name="emailLocal"
-            required
-            value={emailLocal}
-            onChange={(e) => setEmailLocal(e.target.value)}
-            placeholder="alice"
-            autoComplete="email"
-            className="flex-1 bg-transparent border-0 px-1 py-1.5 text-[13px] font-mono text-on-bg focus:outline-none placeholder:text-dim"
-          />
-          <span className="text-[13px] font-mono text-dim pr-2">_]</span>
-          <span className="text-[13px] font-mono text-on-bg pr-2">{EMAIL_SUFFIX}</span>
-        </div>
-      </Field>
+      <EmailInput autoComplete="email" />
 
       {error && (
         <div className="text-[11px] font-mono text-error before:content-['!_'] before:mr-1">
@@ -112,4 +91,3 @@ export function ForgotForm() {
     </form>
   );
 }
-

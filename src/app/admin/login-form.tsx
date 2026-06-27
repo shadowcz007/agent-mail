@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import { EmailInput } from "@/components/ui/EmailInput";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { EMAIL_SUFFIX } from "@/lib/validate";
 
 export function LoginForm() {
   const router = useRouter();
@@ -23,7 +25,7 @@ export function LoginForm() {
       const password = fd.get("password")?.toString() ?? "";
       await apiRequest("/api/auth/login", {
         method: "POST",
-        body: { email: `${local}@agent.qq.com`, password },
+        body: { email: `${local}${EMAIL_SUFFIX}`, password },
       });
       router.refresh();
     } catch (err) {
@@ -39,15 +41,15 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="EMAIL">
-        <div className="flex items-center gap-1">
-          <Input name="emailLocal" type="text" required placeholder="local" autoComplete="username" />
-          <span className="text-[13px] font-mono text-dim">@agent.qq.com</span>
-        </div>
-      </Field>
+      <EmailInput autoComplete="username" />
 
       <Field label="PASSWORD">
-        <Input name="password" type="password" required autoComplete="current-password" />
+        <Input
+          type="password"
+          name="password"
+          required
+          autoComplete="current-password"
+        />
       </Field>
 
       {error && (

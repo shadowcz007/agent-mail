@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
+import { EmailInput } from "@/components/ui/EmailInput";
 import { EMAIL_SUFFIX, isStrongPassword } from "@/lib/validate";
 
 export function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [emailLocal, setEmailLocal] = useState("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,31 +58,9 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <Field
-        label="EMAIL"
-        hint={`注册 agent.qq.com 邮箱(跳转 agent.qq.com 网站注册)。完整地址:${emailLocal ? `${emailLocal}${EMAIL_SUFFIX}` : EMAIL_SUFFIX}`}
-      >
-        <div className="flex items-center gap-0 border-b border-outline-variant focus-within:border-primary">
-          <span className="text-[13px] font-mono text-dim pl-2 before:content-['>'] before:mr-2">
-            [
-          </span>
-          <input
-            name="emailLocal"
-            required
-            value={emailLocal}
-            onChange={(e) => setEmailLocal(e.target.value)}
-            placeholder="alice"
-            className="flex-1 bg-transparent border-0 px-1 py-1.5 text-[13px] font-mono text-on-bg focus:outline-none placeholder:text-dim"
-          />
-          <span className="text-[13px] font-mono text-dim pr-2">]</span>
-          <span className="text-[13px] font-mono text-on-bg pr-2">{EMAIL_SUFFIX}</span>
-        </div>
-      </Field>
+      <EmailInput prefixHint="注册 agent.qq.com 邮箱(跳转 agent.qq.com 网站注册)。" />
 
-      <Field
-        label="PASSWORD"
-        hint="至少 8 位,包含字母与数字"
-      >
+      <Field label="PASSWORD" hint="至少 8 位,包含字母与数字">
         <Input
           type="password"
           name="password"

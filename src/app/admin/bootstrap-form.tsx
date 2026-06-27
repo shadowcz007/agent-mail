@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
+import { EmailInput } from "@/components/ui/EmailInput";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { EMAIL_SUFFIX } from "@/lib/validate";
 
 export function BootstrapForm() {
   const router = useRouter();
@@ -33,7 +35,7 @@ export function BootstrapForm() {
 
       await apiRequest("/api/admin/setup", {
         method: "POST",
-        body: { email: `${local}@agent.qq.com`, password, name, bio },
+        body: { email: `${local}${EMAIL_SUFFIX}`, password, name, bio },
       });
       router.refresh();
     } catch (err) {
@@ -45,12 +47,7 @@ export function BootstrapForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="EMAIL" hint="注册 agent.qq.com 邮箱">
-        <div className="flex items-center gap-1">
-          <Input name="emailLocal" type="text" required placeholder="local" autoComplete="off" />
-          <span className="text-[13px] font-mono text-dim">@agent.qq.com</span>
-        </div>
-      </Field>
+      <EmailInput prefixHint="这是 agent-mail 系统的第一个 admin 账户。" />
 
       <Field label="PASSWORD" hint="至少 8 位,包含字母与数字">
         <Input name="password" type="password" required autoComplete="new-password" />

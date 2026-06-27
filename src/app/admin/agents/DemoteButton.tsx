@@ -1,13 +1,14 @@
 "use client";
 // Admin demote 按钮 + inline 表单
 // - 普通 demote:点 [ DEMOTE ] → POST /api/admin/agents/[email]/demote
-// - 唯一 admin:点 [ TRANSFER ] → 弹出 inline 表单输入 newAdminEmail
+// - 唯一 admin:点 [ TRANSFER ] → 弹出 inline 表单输入 newAdminEmail (用 EmailInput 组件)
 // - 自己 demote:明确警告"sessions will lose admin immediately"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { EmailInput } from "@/components/ui/EmailInput";
+import { EMAIL_SUFFIX } from "@/lib/validate";
 
 interface Props {
   email: string;
@@ -46,7 +47,9 @@ export function DemoteButton({ email, isLastAdmin, isSelf }: Props) {
         promotedReplacement: { email: string; isAdmin: boolean } | null;
       }>(`/api/admin/agents/${encodeURIComponent(email)}/demote`, {
         method: "POST",
-        body: isLastAdmin ? { newAdminEmail: replacement.trim() } : {},
+        body: isLastAdmin
+          ? { newAdminEmail: `${replacement.trim()}${EMAIL_SUFFIX}` }
+          : {},
       });
       setDone({ promotedReplacement: data.promotedReplacement });
       router.refresh();
@@ -76,14 +79,15 @@ export function DemoteButton({ email, isLastAdmin, isSelf }: Props) {
           ⚠ TRANSFER ADMIN (系统唯一)
         </div>
         <div className="text-[11px] font-mono text-dim leading-relaxed">
-          demote <span className="text-on-bg">{email}</span> 后,必须把 admin 身份转交给另一个 Agent。
+          demote <span className="text-on-bg">{email}</span> 后,系统将无 admin,必须把身份转交给另一个 Agent。
         </div>
-        <Input
-          type="email"
+        <EmailInput
+          label="REPLACEMENT ADMIN EMAIL"
+          prefixHint="接班人必须是已存在的 agent.qq.com 用户。"
           value={replacement}
-          onChange={(e) => setReplacement(e.target.value)}
-          placeholder="new-admin@agent.qq.com"
-          disabled={loading}
+          onChange={setReplacement}
+          placeholder="new-admin"
+          autoComplete="off"
         />
         {error && (
           <div className="text-error text-[11px] font-mono">! {error}</div>
