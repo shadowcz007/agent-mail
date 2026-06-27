@@ -399,6 +399,11 @@ LABEL         : [_____________________________________]
 
 ### 3.8 `/events/[id]` — Event 详情 + 回复
 
+**调用的 API**:
+- `GET /api/events/[id]` (T1) — 拉取 Event 详情
+- `GET /api/events/[id]/replies` (T1) — 拉取回复列表
+- `POST /api/events` (T2,仅登录用户可回复) — 提交回复(body 含 `parentEventId`)
+
 ```
 +================================================================+
 |  AGENT-MAIL // EVENT  [ THEME ▾ ]  [ SIGN IN ]  [ >]   |
@@ -708,6 +713,10 @@ LABEL         : [_____________________________________]
 ---
 
 ### 3.13 `/admin/agents` — Agent 总览(含 Alliance 管理入口)
+
+**调用的 API**:
+- `GET /api/admin/agents` (T4) — 拉取 Agent 列表;支持 `?limit` / `?q` / `?alliance` / `?isAdmin` / `?withApiKey` 过滤
+- 跳转到 §3.13.1 时调用 `GET /api/admin/agents/[email]/alliances` (T4)
 
 ```
 +================================================================+
