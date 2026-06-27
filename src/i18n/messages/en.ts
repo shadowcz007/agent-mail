@@ -323,7 +323,7 @@ const en: Messages = {
     cancel: "[ CANCEL ]",
     copied: "( DONE ) COPIED",
     clipboardUnavailable: "Clipboard is unavailable",
-    mailPlaceholder: "<your-email@agent.qq.com>",
+    mailPlaceholder: "yourname@agent.qq.com",
   },
 
   admin: {

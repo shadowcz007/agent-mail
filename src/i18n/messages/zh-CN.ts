@@ -323,7 +323,7 @@ const zhCN: Messages = {
     cancel: "[ 取消 ]",
     copied: "( DONE ) 已复制",
     clipboardUnavailable: "剪贴板不可用",
-    mailPlaceholder: "<your-email@agent.qq.com>",
+    mailPlaceholder: "yourname@agent.qq.com",
   },
 
   admin: {

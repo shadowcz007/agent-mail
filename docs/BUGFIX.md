@@ -46,7 +46,8 @@
   如果没有安装`agently-mail`，需要初始化：请阅读 https://agent.qq.com/doc/cli-setup.md 文档，按照步骤安装并配置 Agent Mail CLI。
   ```
 - **`<origin>` 动态读取**:由 `register/page.tsx` (server)从 `headers()` 读 `host` + `x-forwarded-proto` 拼出 `${proto}://${host}` 作为 prop 传入。**线上 / Vercel preview / 本地 dev / 自定义域名各自显示正确的访问入口**,不硬编码 mixlab.top。客户端 prop 缺省时 fallback 到线上默认(零破坏)。
-- `<mail>` 替换优先级:`props.email` > `i18n.mailPlaceholder`(`<your-email@agent.qq.com>`)
+- `<mail>` 替换优先级:`props.email` > `i18n.mailPlaceholder`(`yourname@agent.qq.com`)
+- **占位符纯文本不带 `<>`**(2026-06-27 修正):原 `<your-email@agent.qq.com>` 经 `encodeURIComponent` 编成 `%3C...%3E` 在 URL 里既丑又语义错位(`<>` 是给人看的"待填"标记,不应进 URL)。改用 `yourname@agent.qq.com` 作为纯文本占位符,URL 编码后是 `yourname%40agent.qq.com`,清晰可读。
 - 复制走 `navigator.clipboard.writeText`(参考 `ApiKeyManager.tsx` + `AgentMdHero.tsx` 现有模式);不可用显示 `errors.clipboardUnavailable`
 - 复制成功 3 秒内显示 `( DONE ) 已复制`(装饰符跨语言一致)
 - ESC 键关闭 modal;点 backdrop 关闭;点 modal 内 stopPropagation 不关
@@ -97,7 +98,7 @@ const origin = `${proto}://${host}`;
 - 装饰符 `( DONE )` / `//` / `[ > ]` 跨语言一致
 - 无 emoji
 - 邮箱替换 `<mail>`:传 `mixlab@agent.qq.com` → prompt 含 `mixlab@agent.qq.com` + `?register=mixlab%40agent.qq.com`(`encodeURIComponent`)
-- 空 email → fallback 到 `<your-email@agent.qq.com>` 占位
+- 空 email → fallback 到 `yourname@agent.qq.com` 占位(纯文本,无 `<>`)
 - ESC + backdrop click + cancel button 都能关 modal
 - **origin 动态性**:本地 dev `http://localhost:3000` / Vercel preview `https://xxx.vercel.app` / 线上 `https://agent-mail.mixlab.top` 各显示正确 URL
 
@@ -110,7 +111,7 @@ const origin = `${proto}://${host}`;
 | D3 | **`<pre>` 而非 `<textarea>`** | 提示词只读 + 等宽 + 自动换行足够;`<textarea>` 暗示"可编辑"反而误导用户去改 prompt |
 | D4 | **`<mail>` 占位而非禁用按钮** | 用户可能想"先复制通用模板,稍后填邮箱再发";占位保留弹性 |
 | D5 | **复制按钮 primary + cancel secondary** | 复制是 modal 的"主任务";cancel 视觉降权 |
-| D6 | **`<mail>` 默认占位走 i18n** | zh-CN 用 `<your-email@agent.qq.com>`,en 同(协议惯例跨语言一致) |
+| D6 | **`<mail>` 默认占位走 i18n**(2026-06-27 改为纯文本) | 原 `<your-email@agent.qq.com>` 进 URL 后变 `%3C...%3E` 难看;改用 `yourname@agent.qq.com` 纯文本占位符,zh-CN + en 同(协议惯例跨语言一致) |
 | D7 | **不引入新 modal 组件库** | 当前 UI 风格(直角 + 等宽 + 黑底)与 headlessui 等不兼容,自写一个 60 行的 overlay 反而最贴 DESIGN §1 |
 | D8 | **register URL 用 `${origin}` 动态读取**(2026-06-27 改进) | 硬编码 `mixlab.top` 让 preview / 自定义域名 / 本地 dev 失效;server `headers()` 读 `host` + `x-forwarded-proto` 拼 origin,client fallback 到线上默认(零破坏) |
 
