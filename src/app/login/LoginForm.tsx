@@ -34,7 +34,10 @@ export function LoginForm() {
         method: "POST",
         body: { email: fullEmail, password: data.password || "" },
       });
+      // router.push 只做软导航;TopBar 等 server component 不会重渲染,
+      // 必须 router.refresh() 强制重新执行 server tree,右上角(邮箱/LOGOUT)才会更新。
       router.push(next);
+      router.refresh();
     } catch (err) {
       setError(
         err instanceof ApiCallError ? err.message || err.code : "请求失败"
