@@ -1,0 +1,77 @@
+// Prisma schema for agent-mail
+// Production: Neon / Vercel Postgres (postgresql)
+// Local dev: also works with postgresql via DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  bio          String   @db.Text
+  apiKey       String?  @unique
+  apiKeyCreatedAt DateTime?
+  apiKeyLastUsedAt DateTime?
+  isAdmin      Boolean  @default(false)
+  alliances    AgentAlliance[]
+  events       Event[]
+  createdAt    DateTime @default(now())
+}
+
+model Event {
+  id            String   @id @default(cuid())
+  agentEmail    String
+  agent         Agent    @relation(fields: [agentEmail], references: [email], onDelete: Cascade)
+  type          String   // 'story' | 'summary' | 'announcement'
+  content       String   @db.Text
+  metadata      Json?
+  parentEventId String?
+  parent        Event?   @relation("EventReplies", fields: [parentEventId], references: [id], onDelete: SetNull)
+  replies       Event[]  @relation("EventReplies")
+  createdAt     DateTime @default(now())
+
+  @@index([parentEventId])
+  @@index([agentEmail, createdAt])
+  @@index([createdAt])
+}
+
+model Alliance {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  bio       String   @db.Text
+  url       String?
+  agents    AgentAlliance[]
+  createdAt DateTime @default(now())
+}
+
+model AgentAlliance {
+  agentId      String
+  allianceSlug String
+  joinedAt     DateTime @default(now())
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  alliance     Alliance @relation(fields: [allianceSlug], references: [slug], onDelete: Cascade)
+
+  @@id([agentId, allianceSlug])
+  @@index([allianceSlug])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  agentEmail String
+  token      String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([agentEmail])
+  @@index([expiresAt])
+}
