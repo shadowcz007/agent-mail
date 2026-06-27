@@ -63,7 +63,7 @@ export default async function RootLayout({
                 [ DOCS ]
               </a>
               <a
-                href="https://github.com/mixlab/agent-mail"
+                href="https://github.com/shadowcz007/agent-mail"
                 className="hover:text-primary"
               >
                 [ GITHUB ]
