@@ -4,6 +4,133 @@
 > 顺序按发现时间倒序排。每条包含:**症状 / 根因 / 修复 / 涉及文件**。
 >
 > 全部修复均已推送 main,Vercel 自动部署。
+>
+> **最近更新**:2026-06-27 — 新增 Logout 303、EmailInput 抽取、邮箱下划线样式去除。
+
+---
+
+## 0. EmailInput 重复代码统一抽取
+
+**时间**:2026-06-27
+**提交**:`3ecc582`
+
+### 症状
+排查发现 **6 处表单** 都重复实现了 `[ input ]@agent.qq.com` 的视觉 + `emailLocal` 状态:
+- `/login`、`/register`、`/forgot-password`、`/admin` 登录、`/admin` bootstrap、`/admin/agents` DemoteButton
+
+每处都有自己的 `[`、`]`、下划线、suffix、placeholder、autoComplete 实现。修改样式需改 6 处。
+
+### 根因
+设计约定(`name="emailLocal"`、只输 local part、提交时拼 `@agent.qq.com`)在 SPEC 里写明,
+但前端实现散落在各处。
+
+### 修复
+新建 `src/components/ui/EmailInput.tsx`(78 行),统一所有 6 处:
+
+```tsx
+<EmailInput
+  label="EMAIL"
+  prefixHint="注册 agent.qq.com 邮箱(跳转 agent.qq.com 网站注册)。"
+  value={emailLocal}
+  onChange={setEmailLocal}
+  placeholder="alice"
+  autoComplete="username"
+/>
+```
+
+支持的 props:
+- `label` / `prefixHint` / `hint` — 标签与提示
+- 受控 (`value + onChange`) 或非受控 (内部 useState)
+- `autoComplete` / `placeholder` / `required` / `name`
+
+### 副带 UX 改进:DemoteButton 输入更轻
+之前 TRANSFER ADMIN 让用户输入**完整 email**(`alice@agent.qq.com`),
+现在跟登录注册一致,只输 local part,提交时拼后缀。
+
+### 涉及文件
+- `src/components/ui/EmailInput.tsx` — 新建
+- 6 处调用方全部简化:`LoginForm.tsx`、`RegisterForm.tsx`、`ForgotForm.tsx`、`admin/login-form.tsx`、`admin/bootstrap-form.tsx`、`DemoteButton.tsx`
+
+### 净收益
+| | 数量 |
+|---|---|
+| 新增 | 78 行 (新组件) |
+| 修改 | 6 处 -95 行 |
+| **净删重复** | **-17 行** |
+| 视觉一致性 | 6 处 → 1 处定义 |
+
+---
+
+## 0.1 邮箱输入框多余的 `_` 装饰字符
+
+**时间**:2026-06-27
+**提交**:`c160e74`(在 EmailInput 抽取之前先去掉 underscore)
+
+### 症状
+视觉显示 `[> [_ alice _] @agent.qq.com`:
+```
+>[_
+<input> alice
+_]@agent.qq.com
+```
+`_` 模拟终端 cursor,但视觉上过度装饰,用户反映看不懂。
+
+### 修复
+简化成 `[ alice ]@agent.qq.com`,匹配站内其他按钮语言
+`[ FORGOT PASSWORD? ]` `[ > SIGN IN ]` 的克制风格。
+
+### 涉及文件
+- `LoginForm.tsx`、`RegisterForm.tsx`(之后被 EmailInput 完全替代)
+
+---
+
+## 1. Logout 右上角状态不更新 · 204 → 303 redirect
+
+**时间**:2026-06-27
+**提交**:`879a760`
+
+### 症状
+点 `[ LOGOUT ]`,API 实际返回 **204 No Content**(cookie 已清除),
+但右上角继续显示 `邮箱 [ LOGOUT ]`,不切回 `[ REGISTER ][ > SIGN IN ]`。
+手动刷新后才看到匿名态。
+
+### 根因
+TopBar 的 logout 是**原生 HTML form**:
+```html
+<form action="/api/auth/logout" method="POST">
+  <button>[ LOGOUT ]</button>
+</form>
+```
+浏览器对原生 form POST + **204 No Content** 的处理是:**不导航、不刷新**,
+cookie 虽然清了,但页面 React state 没重新评估,TopBar 维持旧 server component 输出。
+
+> 注:这与之前 #2 "TopBar 登录后不更新" 是同一种问题(都是"server component 状态未刷新"),
+> 触发机制不同:登录是软导航 `router.push`,登出是原生 form + 204。
+
+### 修复
+logout 端点改返回 **303 重定向到 `/`**(POST-redirect-GET 标准模式),
+Set-Cookie 头原样保留:
+
+```ts
+export const POST = withAuth("T3", async (req) => {
+  const cleared = await clearSessionCookie();
+  return NextResponse.redirect(new URL("/", req.url), {
+    status: 303,
+    headers: cleared.headers,  // 复用 Set-Cookie: Max-Age=0
+  });
+});
+```
+
+浏览器流程:
+1. POST /api/auth/logout → 收到 303
+2. 跟跳 → GET /
+3. 无 session cookie → TopBar `getCurrentUser()` 返回 null
+4. 渲染匿名态 `[ REGISTER ][ > SIGN IN ]`
+
+### 涉及文件
+- `src/app/api/auth/logout/route.ts`
+
+---
 
 ---
 
@@ -84,8 +211,11 @@ router.refresh();  // ← 关键
 ### 旁注
 其他相关表单已经做对了:
 - `admin/login-form.tsx` — 已有 `router.refresh()`
-- 登出 — 走浏览器原生 `<form action>` POST,自动 reload
 - `RegisterForm` — 注册不设 session,跳到 login 页是全新加载
+
+> ⚠️ 注:这条旁注里"登出走原生 form 自动 reload"实际是错的——
+> 原生 form POST + 204 No Content 浏览器不导航,**不会 reload**。
+> 详见本文件 §1 "Logout 右上角状态不更新"。
 
 ---
 
@@ -315,27 +445,31 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | 类别 | 数量 |
 |---|---|
 | 路由 / 页面缺失 | 1(`/agents`、`/events`) |
-| 客户端状态 bug | 2(ReplyForm currentTarget、TopBar refresh) |
-| 文案 / 占位 | 3(GitHub URL、/index.md、Admin 密码提示) |
+| 客户端状态 bug | 3(ReplyForm currentTarget、TopBar login、Logout 204) |
+| 文案 / 占位 | 3(GitHub URL、/index.md、邮箱下划线) |
 | 功能缺失 | 1(admin promote/demote) |
+| 重构 / 复用 | 1(EmailInput 抽取) |
 | 部署 / 基础设施 | 1(Vercel P1002) |
 
 | 文件改动统计 | 数量 |
 |---|---|
-| 新建文件 | 7 |
-| 修改文件 | 9 |
+| 新建文件 | 9 |
+| 修改文件 | 13 |
 | 新增 API 端点 | 2(promote / demote) |
 | 新增错误码 | 1(LAST_ADMIN) |
 | 新增公共页面 | 2(`/agents`、`/events`) |
+| 新增 UI 组件 | 1(EmailInput) |
 
-| Git 提交 | 内容 |
+| Git 提交(全部已推送 main) | 内容 |
 |---|---|
-| `3c59bf5` | feat: /agents + /events 公共页 |
-| `d7e99b1` | fix: ReplyForm + footer GitHub URL |
-| `ebdcd2c` | feat: admin promote/demote + dynamic /index.md |
+| `3ecc582` | refactor: EmailInput 抽取,6 处复用 |
+| `c160e74` | style: 邮箱输入框去除下划线 |
+| `879a760` | fix: Logout 返回 303 而非 204 |
+| `6e24339` + `68efbf0` | fix: Vercel build P1002 + .env.example 入 git |
 | `6996e7a` | fix: TopBar refresh after login |
-| `6e24339` | fix: Vercel build P1002 |
-| `68efbf0` | chore: track .env.example |
+| `ebdcd2c` | feat: admin promote/demote + dynamic /index.md |
+| `3c59bf5` | feat: /agents + /events 公共页 |
+| `d7e99b1` | fix: ReplyForm currentTarget + footer GitHub URL |
 
 ---
 
@@ -345,11 +479,17 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
    都可能踩异步置空坑。**总是同步捕获**:`const el = e.currentTarget`。
 2. **软导航 + Server Components**:`router.push()` 不会刷新 server tree,
    需要显式 `router.refresh()`(用户登录、theme 切换等场景)。
-3. **Neon + pgBouncer + Prisma migrate**:事务模式下 advisory lock 不稳,
+3. **原生 HTML form + 状态变更**:浏览器对 POST + **204 No Content** 的处理是"不导航",
+   即使 cookie 被清也不会刷新页面。要么客户端 fetch + `router.refresh()`,
+   要么 server 返回 **303 重定向**(POST-redirect-GET 模式)。
+4. **Neon + pgBouncer + Prisma migrate**:事务模式下 advisory lock 不稳,
    migrate 走 direct endpoint,运行时走 pooler。
-4. **孤儿 lock 排查**:`SELECT * FROM pg_locks WHERE locktype='advisory'`
+5. **孤儿 lock 排查**:`SELECT * FROM pg_locks WHERE locktype='advisory'`
    + `SELECT pg_terminate_backend(<pid>)`。
-5. **SPEC / LAYOUT 的契约**:改前先查文档,改完同步更新。
+6. **SPEC / LAYOUT 的契约**:改前先查文档,改完同步更新。
    `SPEC.md` §3.5 漏了 admin promote/demote,补上后端点从 13 → 15。
-6. **`/index.md` 这类"文档型端点"**:MVP 阶段经常被写成硬编码占位,
+7. **`/index.md` 这类"文档型端点"**:MVP 阶段经常被写成硬编码占位,
    上线前要 grep `0`/`暂无`/`TODO` 走一遍。
+8. **重复视觉必抽取**:6 处邮箱输入的 `[ input ]@agent.qq.com` 重复 95 行,
+   抽成 EmailInput 后净删 17 行,改一次样式全站生效。
+   **复盘标准**:复制粘贴 ≥ 3 处就该抽组件。
