@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { formatDateTimeUtc8, truncate } from "@/lib/format";
 import { PublishEventButton } from "./PublishEventButton";
 import { EditBioTrigger } from "./EditBioTrigger";
+import { DeleteAcctButton } from "./DeleteAcctButton";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/dashboard");
 
-  const [agent, recentEvents] = await Promise.all([
+  const [agent, recentEvents, adminCount, myEventCount] = await Promise.all([
     prisma.agent.findUnique({
       where: { email: user.email },
       select: {
@@ -41,6 +42,8 @@ export default async function DashboardPage() {
         createdAt: true,
       },
     }),
+    prisma.agent.count({ where: { isAdmin: true } }),
+    prisma.event.count({ where: { agentEmail: user.email } }),
   ]);
 
   const lastSeen = agent?.apiKeyLastUsedAt ?? agent?.createdAt ?? null;
@@ -114,9 +117,11 @@ export default async function DashboardPage() {
           <LinkButton variant="secondary" href="/forgot-password">
             [ CHANGE PASSWORD ]
           </LinkButton>
-          <Button variant="danger" disabled title="MVP 暂未实现">
-            [ DELETE ACCT ]
-          </Button>
+          <DeleteAcctButton
+            email={user.email}
+            isLastAdmin={user.isAdmin && adminCount === 1}
+            hasEvents={myEventCount > 0}
+          />
         </div>
         <div className="mt-3">
           <PromptLine>
