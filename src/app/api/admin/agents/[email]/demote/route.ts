@@ -4,6 +4,9 @@
 //       系统会原子地把目标提升为 admin,同时取消当前 admin。
 //       没有 newAdminEmail + 唯一 admin → 返回 409 LAST_ADMIN。
 // body: { newAdminEmail?: string }
+//
+// i18n:所有 message 都通过 ApiErrorCode + 前端 errors.<code> 查表。
+// validation error details 用 i18n key(replacementSameAsTarget 等),前端查表。
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -16,7 +19,7 @@ export const dynamic = "force-dynamic";
 const DemoteSchema = z.object({
   newAdminEmail: z
     .string()
-    .regex(EMAIL_REGEX, "必须是 @agent.qq.com 邮箱")
+    .regex(EMAIL_REGEX, "mustBeAgentQq")
     .optional(),
 });
 
@@ -51,14 +54,12 @@ export const POST = withAuth<{ email: string }>("T4", async (req: NextRequest, {
   // 4. 唯一 admin → 必须提供 newAdminEmail
   if (adminCount === 1) {
     if (!newAdminEmail) {
-      return apiError("LAST_ADMIN", {
-        message: "这是系统唯一的 admin,demote 时必须在 body 中提供 newAdminEmail 来指定接班人。",
-      });
+      return apiError("LAST_ADMIN");
     }
     // 不允许把 admin 转给自己
     if (newAdminEmail === target.email) {
       return apiError("VALIDATION_ERROR", {
-        details: { newAdminEmail: "newAdminEmail 不能与被 demote 的 email 相同" },
+        details: { newAdminEmail: "replacementSameAsTarget" },
       });
     }
     const replacement = await prisma.agent.findUnique({
@@ -67,12 +68,12 @@ export const POST = withAuth<{ email: string }>("T4", async (req: NextRequest, {
     });
     if (!replacement) {
       return apiError("AGENT_NOT_FOUND", {
-        message: `接班人 ${newAdminEmail} 不存在`,
+        details: { newAdminEmail: "replacementNotFound" },
       });
     }
     if (replacement.isAdmin) {
       return apiError("VALIDATION_ERROR", {
-        details: { newAdminEmail: "接班人已经是 admin,无需重复提升" },
+        details: { newAdminEmail: "replacementAlreadyAdmin" },
       });
     }
 

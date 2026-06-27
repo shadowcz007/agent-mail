@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { formatDateUtc8 } from "@/lib/format";
 import { AddAllianceForm, RemoveAllianceButton } from "./actions";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,11 @@ interface PageProps {
 
 export default async function AgentAlliancesPage({ params }: PageProps) {
   const user = await getCurrentUser();
-  if (!user || !user.isAdmin) return <AccessDenied />;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "admin");
+
+  if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
   const { email } = await params;
   const decodedEmail = decodeURIComponent(email);
@@ -34,10 +39,10 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
   });
   if (!agent) {
     return (
-      <Section title="AGENT NOT FOUND">
-        <PromptLine>! 未找到 Agent : {decodedEmail}</PromptLine>
+      <Section title={t("agentNotFound")}>
+        <PromptLine>{t("agentNotFoundBody", { email: decodedEmail })}</PromptLine>
         <PromptLine>
-          &gt; <Link href="/admin/agents" className="underline">[ &gt; BACK TO AGENT LIST ]</Link>
+          &gt; <Link href="/admin/agents" className="underline">{t("backToAgentList")}</Link>
         </PromptLine>
       </Section>
     );
@@ -52,27 +57,27 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <H1>MANAGE ALLIANCES</H1>
+      <H1>{t("manageAlliancesTitle")}</H1>
 
       <Section title="AGENT">
         <div className="space-y-1">
-          <PromptLine>EMAIL : {agent.email}</PromptLine>
-          <PromptLine>NAME : {agent.name}</PromptLine>
-          <PromptLine>JOINED : {formatDateUtc8(agent.createdAt.toISOString())}</PromptLine>
+          <PromptLine>{t("agentKvEmail")} : {agent.email}</PromptLine>
+          <PromptLine>{t("agentKvName")} : {agent.name}</PromptLine>
+          <PromptLine>{t("agentKvJoined")} : {formatDateUtc8(agent.createdAt.toISOString(), locale)}</PromptLine>
         </div>
       </Section>
 
-      <Section title="ADD TO ALLIANCE">
+      <Section title={t("addToAlliance")}>
         {available.length === 0 ? (
-          <PromptLine>该 Agent 已加入全部联盟。</PromptLine>
+          <PromptLine>{t("allAlliancesJoined")}</PromptLine>
         ) : (
           <AddAllianceForm email={agent.email} available={available} />
         )}
       </Section>
 
-      <Section title="CURRENT ALLIANCES">
+      <Section title={t("currentAlliances")}>
         {agent.alliances.length === 0 ? (
-          <PromptLine>该 Agent 暂不属于任何联盟。</PromptLine>
+          <PromptLine>{t("noCurrentAlliances")}</PromptLine>
         ) : (
           <div className="border border-outline">
             {agent.alliances.map((aa, i) => (
@@ -91,7 +96,7 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
                   </div>
                   <div className="mt-1 pl-11 text-[11px] font-mono space-y-0.5">
                     <div><span className="text-dim">NAME</span> : {aa.alliance.name}</div>
-                    <div><span className="text-dim">JOINED</span> : {formatDateUtc8(aa.joinedAt.toISOString())}</div>
+                    <div><span className="text-dim">JOINED</span> : {formatDateUtc8(aa.joinedAt.toISOString(), locale)}</div>
                   </div>
                 </div>
                 <RemoveAllianceButton email={agent.email} slug={aa.alliance.slug} />
@@ -105,21 +110,21 @@ export default async function AgentAlliancesPage({ params }: PageProps) {
 
       <div className="flex gap-2">
         <LinkButton variant="secondary" href="/admin/agents">
-          [ &gt; BACK TO AGENT LIST ]
+          {t("backToAgentList")}
         </LinkButton>
       </div>
 
-      <PromptLine><StatusChip tone="warning">NOTE</StatusChip> Alliance 关系仅由管理员设置,用户本人无法修改。</PromptLine>
+      <PromptLine><StatusChip tone="warning">NOTE</StatusChip> {t("allianceNote")}</PromptLine>
     </div>
   );
 }
 
-function AccessDenied() {
+function AccessDenied({ t }: { t: ReturnType<typeof getTranslator> }) {
   return (
-    <Section title="ACCESS DENIED">
-      <PromptLine>! 当前会话不是管理员账户</PromptLine>
+    <Section title={t("accessDenied")}>
+      <PromptLine>{t("accessDeniedBody")}</PromptLine>
       <PromptLine>
-        &gt; <Link href="/admin" className="underline">[ &gt; BACK TO LOGIN ]</Link>
+        &gt; <Link href="/admin" className="underline">{t("accessDeniedBack")}</Link>
       </PromptLine>
     </Section>
   );

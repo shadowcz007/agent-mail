@@ -1,34 +1,36 @@
 "use client";
 
 // Theme switcher dropdown — 全站始终可见,localStorage 持久化 + cookie 同步
+// 主题名沿用英文(视觉系统约定),中文 desc 由 i18n 字典提供
 import { useEffect, useRef, useState } from "react";
 import type { ThemeId } from "@/lib/types";
+import { useT } from "@/i18n/client";
 
 const THEMES: Array<{
   id: ThemeId;
   name: string;
-  desc: string;
+  descKey: "protocolRegistry" | "terminal" | "studio";
   bg: string;
   fg: string;
 }> = [
   {
     id: "protocol-registry",
     name: "PROTOCOL REGISTRY",
-    desc: "米黄 + 黑字 + 终端绿",
+    descKey: "protocolRegistry",
     bg: "#fcf9f3",
     fg: "#1c1c18",
   },
   {
     id: "terminal",
     name: "TERMINAL",
-    desc: "全黑 + 终端绿字",
+    descKey: "terminal",
     bg: "#1c1c18",
     fg: "#fcf9f3",
   },
   {
     id: "studio",
     name: "STUDIO",
-    desc: "纯白 + 黑字 + 中性灰",
+    descKey: "studio",
     bg: "#ffffff",
     fg: "#0d0d0d",
   },
@@ -46,6 +48,7 @@ export function ThemeSwitcher({ initialTheme }: { initialTheme: string }) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<string>(initialTheme);
   const ref = useRef<HTMLDivElement>(null);
+  const tTheme = useT("theme");
 
   useEffect(() => {
     // 客户端兜底:若 localStorage 与 cookie/html 不一致,以 localStorage 为准
@@ -129,7 +132,7 @@ export function ThemeSwitcher({ initialTheme }: { initialTheme: string }) {
                   BG {t.bg.toUpperCase()} / FG {t.fg.toUpperCase()}
                 </div>
                 <div className="text-[10px] text-dim mt-0.5 font-mono">
-                  ▢ {t.desc}
+                  ▢ {tTheme(t.descKey)}
                 </div>
               </button>
             );

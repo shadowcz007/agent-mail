@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 async function ensureSelf(email: string, sessionEmail: string): Promise<NextResponse | null> {
   if (decodeURIComponent(email) !== sessionEmail) {
-    return apiError("FORBIDDEN", { message: "只能管理自己的 API Key" });
+    return apiError("FORBIDDEN", { details: { reason: "selfOnlyApiKey" } });
   }
   return null;
 }

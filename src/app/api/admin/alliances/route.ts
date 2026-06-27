@@ -18,7 +18,10 @@ export const POST = withAuth("T4", async (req: NextRequest) => {
 
   const existing = await prisma.alliance.findUnique({ where: { slug }, select: { id: true } });
   if (existing) {
-    return apiError("VALIDATION_ERROR", { status: 409, message: "slug 已存在" });
+    return apiError("VALIDATION_ERROR", {
+      status: 409,
+      details: { slug: "slugExists" },
+    });
   }
 
   const alliance = await prisma.alliance.create({

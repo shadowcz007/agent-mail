@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { formatDateTimeUtc8, formatNumber } from "@/lib/format";
 import { AllianceEditForm } from "./edit-form";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,11 @@ interface PageProps {
 
 export default async function AllianceEditPage({ params }: PageProps) {
   const user = await getCurrentUser();
-  if (!user || !user.isAdmin) return <AccessDenied />;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "admin");
+
+  if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
   const { slug } = await params;
   const decoded = decodeURIComponent(slug);
@@ -26,10 +31,10 @@ export default async function AllianceEditPage({ params }: PageProps) {
   });
   if (!alliance) {
     return (
-      <Section title="ALLIANCE NOT FOUND">
-        <PromptLine>! 未找到 Alliance : {decoded}</PromptLine>
+      <Section title={t("allianceNotFound")}>
+        <PromptLine>{t("allianceNotFoundBody", { slug: decoded })}</PromptLine>
         <PromptLine>
-          &gt; <Link href="/admin/alliances" className="underline">[ &gt; BACK TO LIST ]</Link>
+          &gt; <Link href="/admin/alliances" className="underline">{t("allianceEditBack")}</Link>
         </PromptLine>
       </Section>
     );
@@ -37,11 +42,12 @@ export default async function AllianceEditPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <H1>EDIT ALLIANCE</H1>
+      <H1>{t("allianceEditTitle")}</H1>
 
-      <Section title={`EDIT ALLIANCE // ${alliance.slug.toUpperCase()}`}>
+      <Section title={t("allianceEditTitleSlug", { slug: alliance.slug.toUpperCase() })}>
         <AllianceEditForm
           slug={alliance.slug}
+          locale={locale}
           initial={{
             name: alliance.name,
             bio: alliance.bio,
@@ -50,11 +56,11 @@ export default async function AllianceEditPage({ params }: PageProps) {
         />
       </Section>
 
-      <Section title="META // 不可编辑">
+      <Section title={t("allianceMetaTitle")}>
         <div className="space-y-1">
-          <PromptLine>SLUG : {alliance.slug} <StatusChip tone="muted">READ-ONLY</StatusChip></PromptLine>
-          <PromptLine>CREATED AT : {formatDateTimeUtc8(alliance.createdAt.toISOString())}</PromptLine>
-          <PromptLine>AGENTS : {formatNumber(alliance._count.agents)}</PromptLine>
+          <PromptLine>{t("allianceMetaSlugLabel")} : {alliance.slug} <StatusChip tone="muted">{t("allianceReadOnly")}</StatusChip></PromptLine>
+          <PromptLine>{t("allianceMetaCreatedLabel")} : {formatDateTimeUtc8(alliance.createdAt.toISOString(), locale)}</PromptLine>
+          <PromptLine>{t("allianceMetaAgentsLabel")} : {formatNumber(alliance._count.agents)}</PromptLine>
         </div>
       </Section>
 
@@ -62,23 +68,23 @@ export default async function AllianceEditPage({ params }: PageProps) {
 
       <div className="flex gap-2">
         <LinkButton variant="secondary" href="/admin/alliances">
-          [ &gt; BACK TO LIST ]
+          {t("allianceEditBack")}
         </LinkButton>
       </div>
 
       <PromptLine>
-        <StatusChip tone="default">NOTE</StatusChip> 修改 bio / name / url 后,/index.md 与首页会立即反映新内容(下次刷新即可)。
+        <StatusChip tone="default">NOTE</StatusChip> {t("allianceEditNoteBody")}
       </PromptLine>
     </div>
   );
 }
 
-function AccessDenied() {
+function AccessDenied({ t }: { t: ReturnType<typeof getTranslator> }) {
   return (
-    <Section title="ACCESS DENIED">
-      <PromptLine>! 当前会话不是管理员账户</PromptLine>
+    <Section title={t("accessDenied")}>
+      <PromptLine>{t("accessDeniedBody")}</PromptLine>
       <PromptLine>
-        &gt; <Link href="/admin" className="underline">[ &gt; BACK TO LOGIN ]</Link>
+        &gt; <Link href="/admin" className="underline">{t("accessDeniedBack")}</Link>
       </PromptLine>
     </Section>
   );

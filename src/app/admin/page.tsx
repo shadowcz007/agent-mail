@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { formatDateTimeUtc8, formatNumber } from "@/lib/format";
 import { BootstrapForm } from "./bootstrap-form";
 import { LoginForm } from "./login-form";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,18 +14,22 @@ export default async function AdminPage() {
   const user = await getCurrentUser();
   const adminCount = await prisma.agent.count({ where: { isAdmin: true } });
 
+  const locale = await getLocale();
+  const t = getTranslator(locale, "admin");
+  const tCommon = getTranslator(locale, "common");
+
   // Bootstrap: no admin exists yet
   if (adminCount === 0) {
     return (
       <div className="space-y-6">
-        <H1>ADMIN SETUP</H1>
+        <H1>{t("setupTitle")}</H1>
         <div className="border border-warning bg-bg text-on-bg p-3 space-y-1">
-          <PromptLine><StatusChip tone="warning">WARNING</StatusChip> 首次启动设置</PromptLine>
-          <PromptLine>这是 agent-mail 系统的第一个管理员账户。</PromptLine>
-          <PromptLine>一旦创建,无法再次通过此页面注册管理员。</PromptLine>
-          <PromptLine>请妥善保管密码。</PromptLine>
+          <PromptLine><StatusChip tone="warning">{tCommon("warning")}</StatusChip> {t("setupWarnTitle")}</PromptLine>
+          <PromptLine>{t("setupWarn1")}</PromptLine>
+          <PromptLine>{t("setupWarn2")}</PromptLine>
+          <PromptLine>{t("setupWarn3")}</PromptLine>
         </div>
-        <Section title="CREATE FIRST ADMIN">
+        <Section title={t("setupCta")}>
           <BootstrapForm />
         </Section>
       </div>
@@ -35,15 +40,15 @@ export default async function AdminPage() {
   if (!user || !user.isAdmin) {
     return (
       <div className="space-y-6">
-        <H1>ADMIN LOGIN</H1>
-        <Section title="SIGN IN TO ADMIN CONSOLE">
+        <H1>{t("loginTitle")}</H1>
+        <Section title={t("loginSubtitle")}>
           <div className="space-y-1 mb-4">
-            <PromptLine>仅限管理员访问。</PromptLine>
-            <PromptLine>检测到当前已有 {adminCount} 个管理员账户。</PromptLine>
+            <PromptLine>{t("loginHint1")}</PromptLine>
+            <PromptLine>{t("loginHint2", { n: adminCount })}</PromptLine>
           </div>
           <LoginForm />
           <div className="border-t border-dashed border-outline mt-4 pt-3 space-y-1">
-            <PromptLine>不是管理员?无法访问。请用管理员邮箱登录。</PromptLine>
+            <PromptLine>{t("loginHint3")}</PromptLine>
           </div>
         </Section>
       </div>
@@ -60,33 +65,33 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <H1>ADMIN DASHBOARD</H1>
-      <Section title={`WELCOME, ${user.name.toUpperCase()}`}>
+      <H1>{t("dashTitle")}</H1>
+      <Section title={t("welcome", { name: user.name.toUpperCase() })}>
         <div className="space-y-1">
-          <PromptLine><StatusChip tone="accent">ADMIN ONLINE</StatusChip></PromptLine>
-          <PromptLine>EMAIL : {user.email}</PromptLine>
-          <PromptLine>LAST SEEN : {formatDateTimeUtc8(new Date().toISOString())} (UTC+8)</PromptLine>
+          <PromptLine><StatusChip tone="accent">{t("adminOnline")}</StatusChip></PromptLine>
+          <PromptLine>{t("kvEmail")} : {user.email}</PromptLine>
+          <PromptLine>{t("kvLastSeen")} : {formatDateTimeUtc8(new Date().toISOString(), locale)} {t("utc8Suffix")}</PromptLine>
         </div>
       </Section>
 
-      <Section title="SYSTEM STATS">
+      <Section title={t("statsTitle")}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="AGENTS" value={agentCount} />
-          <Stat label="EVENTS" value={eventCount} />
-          <Stat label="ALLIANCES" value={allianceCount} />
+          <Stat label={t("statsAgents")} value={agentCount} />
+          <Stat label={t("statsEvents")} value={eventCount} />
+          <Stat label={t("statsAlliances")} value={allianceCount} />
           <div className="border border-outline p-3 flex flex-col gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">PENDING RESETS</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">{t("statsPendingResets")}</span>
             <span className="text-[20px] font-bold font-mono">{formatNumber(pendingResetCount)}</span>
-            <LinkButton variant="secondary" href="/admin/reset-requests">[ &gt; VIEW ]</LinkButton>
+            <LinkButton variant="secondary" href="/admin/reset-requests">{t("statsView")}</LinkButton>
           </div>
         </div>
       </Section>
 
-      <Section title="QUICK ACTIONS">
+      <Section title={t("quickActions")}>
         <div className="flex flex-wrap gap-2">
-          <LinkButton variant="primary" href="/admin/reset-requests">[ &gt; RESET REQUESTS ]</LinkButton>
-          <LinkButton variant="primary" href="/admin/agents">[ &gt; AGENT LIST ]</LinkButton>
-          <LinkButton variant="primary" href="/admin/alliances">[ &gt; ALLIANCES ]</LinkButton>
+          <LinkButton variant="primary" href="/admin/reset-requests">{t("qaResetReq")}</LinkButton>
+          <LinkButton variant="primary" href="/admin/agents">{t("qaAgents")}</LinkButton>
+          <LinkButton variant="primary" href="/admin/alliances">{t("qaAlliances")}</LinkButton>
         </div>
       </Section>
     </div>

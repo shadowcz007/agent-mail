@@ -9,6 +9,7 @@ import { formatDateUtc8, formatNumber } from "@/lib/format";
 import type { Prisma } from "@prisma/client";
 import { DemoteButton } from "./DemoteButton";
 import { PromoteButton } from "./PromoteButton";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,12 @@ interface PageProps {
 
 export default async function AdminAgentsPage({ searchParams }: PageProps) {
   const user = await getCurrentUser();
-  if (!user || !user.isAdmin) return <AccessDenied />;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "admin");
+  const tAgents = getTranslator(locale, "agents");
+
+  if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
@@ -80,20 +86,20 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <H1>AGENT LIST</H1>
+      <H1>{t("agentsTitle")}</H1>
 
-      <Section title={`AGENT LIST // ${formatNumber(total)} 总计`}>
+      <Section title={t("agentsTitleCount", { n: formatNumber(total) })}>
         <form method="GET" className="space-y-3">
           <div className="flex items-end gap-2 flex-wrap">
             <div className="flex-1 min-w-[200px]">
               <label className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg block mb-1">
-                SEARCH
+                {t("agentsSearchLabel")}
               </label>
               <Input
                 type="text"
                 name="q"
                 defaultValue={q}
-                placeholder="email / name / bio"
+                placeholder={t("agentsSearchPlaceholder")}
               />
             </div>
             {alliance && (
@@ -109,20 +115,20 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
               type="submit"
               className="border border-primary bg-primary text-on-primary px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono hover:bg-accent hover:text-on-accent transition-colors"
             >
-              [ &gt; SEARCH ]
+              {t("agentsSearchSubmit")}
             </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">FILTER :</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">{t("agentsFilterLabel")}</span>
             <LinkButton variant={!isAdminRaw && !withApiKeyRaw ? "primary" : "secondary"} href={filterBase({ isAdmin: undefined, withApiKey: undefined })}>
-              [ ALL ({formatNumber(total)}) ]
+              {t("agentsFilterAll", { n: formatNumber(total) })}
             </LinkButton>
             <LinkButton variant={isAdminRaw === "true" ? "primary" : "secondary"} href={filterBase({ isAdmin: "true" })}>
-              [ ADMIN ({formatNumber(totalAdmins)}) ]
+              [ {t("agentsFilterAdmin")} ({formatNumber(totalAdmins)}) ]
             </LinkButton>
             <LinkButton variant={withApiKeyRaw === "true" ? "primary" : "secondary"} href={filterBase({ withApiKey: "true" })}>
-              [ WITH API KEY ({formatNumber(totalWithKey)}) ]
+              [ {t("agentsFilterWithKey")} ({formatNumber(totalWithKey)}) ]
             </LinkButton>
           </div>
         </form>
@@ -130,7 +136,7 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
         <div className="border-t border-dashed border-outline my-3" />
 
         {agents.length === 0 ? (
-          <PromptLine>无匹配 Agent。</PromptLine>
+          <PromptLine>{t("agentsNoMatches")}</PromptLine>
         ) : (
           <div className="border border-outline">
             {agents.map((a, i) => {
@@ -146,30 +152,30 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
                         [ {String(i + 1).padStart(2, "0")} ]
                       </span>
                       <span className="text-[13px] font-mono text-on-bg truncate">{a.email}</span>
-                      {a.isAdmin && <StatusChip tone="accent">ADMIN</StatusChip>}
+                      {a.isAdmin && <StatusChip tone="accent">{t("colAdmin")}</StatusChip>}
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
-                    <div><span className="text-dim">NAME</span> : {a.name}</div>
-                    <div><span className="text-dim">JOINED</span> : {formatDateUtc8(a.createdAt.toISOString())}</div>
-                    <div><span className="text-dim">ALLIANCES</span> : {allianceSlugs}</div>
+                    <div><span className="text-dim">{t("colName")}</span> : {a.name}</div>
+                    <div><span className="text-dim">{t("colJoined")}</span> : {formatDateUtc8(a.createdAt.toISOString(), locale)}</div>
+                    <div><span className="text-dim">{t("colAlliances")}</span> : {allianceSlugs}</div>
                     <div>
-                      <span className="text-dim">API KEY</span> :{" "}
+                      <span className="text-dim">{t("colApiKey")}</span> :{" "}
                       <StatusChip tone={a.apiKey ? "accent" : "muted"}>
-                        {a.apiKey ? "ISSUED" : "NONE"}
+                        {a.apiKey ? t("apiKeyIssued") : t("apiKeyNone")}
                       </StatusChip>
                     </div>
-                    <div><span className="text-dim">EVENTS</span> : {formatNumber(a._count.events)}</div>
+                    <div><span className="text-dim">{t("colEvents")}</span> : {formatNumber(a._count.events)}</div>
                   </div>
                   <div className="mt-2 pl-11 flex flex-wrap gap-2">
                     <LinkButton variant="secondary" href={`/agents/${a.email}`}>
-                      [ &gt; VIEW ]
+                      {t("colView")}
                     </LinkButton>
                     <LinkButton
                       variant="primary"
                       href={`/admin/agents/${encodeURIComponent(a.email)}/alliances`}
                     >
-                      [ &gt; MANAGE ALLIANCES ]
+                      {t("colManageAlliances")}
                     </LinkButton>
                     {a.isAdmin ? (
                       <DemoteButton
@@ -189,17 +195,17 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
       </Section>
 
       <Divider />
-      <PromptLine>显示前 50 条;可通过搜索进一步过滤。</PromptLine>
+      <PromptLine>{t("agentsShowRange", { n: 50 })}</PromptLine>
     </div>
   );
 }
 
-function AccessDenied() {
+function AccessDenied({ t }: { t: ReturnType<typeof getTranslator> }) {
   return (
-    <Section title="ACCESS DENIED">
-      <PromptLine>! 当前会话不是管理员账户</PromptLine>
+    <Section title={t("accessDenied")}>
+      <PromptLine>{t("accessDeniedBody")}</PromptLine>
       <PromptLine>
-        &gt; <Link href="/admin" className="underline">[ &gt; BACK TO LOGIN ]</Link>
+        &gt; <Link href="/admin" className="underline">{t("accessDeniedBack")}</Link>
       </PromptLine>
     </Section>
   );

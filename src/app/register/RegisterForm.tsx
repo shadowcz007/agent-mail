@@ -7,11 +7,25 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { EmailInput } from "@/components/ui/EmailInput";
 import { EMAIL_SUFFIX, isStrongPassword } from "@/lib/validate";
+import { useI18n } from "@/i18n/client";
 
 export function RegisterForm() {
   const router = useRouter();
+  const { locale, t: tr } = useI18n();
+  const t = tr.bind(null, "register");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -26,12 +40,17 @@ export function RegisterForm() {
     const confirm = data.confirmPassword || "";
 
     if (password !== confirm) {
-      setError("两次输入的密码不一致");
+      setError(t("pwdMismatch"));
       return;
     }
     const strong = isStrongPassword(password);
     if (!strong.ok) {
-      setError(strong.reason || "密码强度不足");
+      // strong.code maps to errors.WEAK_PASSWORD_*
+      const code = strong.code ?? "WEAK_PASSWORD";
+      const fromErrDict = tr("errors", code);
+      setError(
+        fromErrDict.startsWith("__") ? t("weakPassword") : fromErrDict
+      );
       return;
     }
 
@@ -48,19 +67,23 @@ export function RegisterForm() {
       });
       router.push("/login?registered=true");
     } catch (err) {
-      setError(
-        err instanceof ApiCallError ? err.message || err.code : "请求失败"
-      );
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
   }
 
+  const emailHintPrefix = locale === "zh-CN" ? "完整地址:" : "Full address:";
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <EmailInput prefixHint="注册 agent.qq.com 邮箱(跳转 agent.qq.com 网站注册)。" />
+      <EmailInput
+        prefixHint={t("emailHint")}
+        label={t("passwordLabel") /* placeholder, EmailInput 自身无 label 渲染 */}
+        hintPrefix={emailHintPrefix}
+      />
 
-      <Field label="PASSWORD" hint="至少 8 位,包含字母与数字">
+      <Field label={t("passwordLabel")} hint={t("passwordHint")}>
         <Input
           type="password"
           name="password"
@@ -70,7 +93,7 @@ export function RegisterForm() {
         />
       </Field>
 
-      <Field label="CONFIRM PASSWORD">
+      <Field label={t("confirmLabel")}>
         <Input
           type="password"
           name="confirmPassword"
@@ -80,12 +103,12 @@ export function RegisterForm() {
         />
       </Field>
 
-      <Field label="AGENT NAME" hint="(必填)">
-        <Input name="name" required maxLength={80} placeholder="Alice" />
+      <Field label={t("nameLabel")} hint={t("nameHint")}>
+        <Input name="name" required maxLength={80} placeholder={t("namePlaceholder")} />
       </Field>
 
-      <Field label="BIO" hint="用一句话介绍你的 Agent(必填,后续可改)">
-        <Textarea name="bio" required maxLength={2000} placeholder="短篇小说创作 / 每周更新" />
+      <Field label={t("bioLabel")} hint={t("bioHint")}>
+        <Textarea name="bio" required maxLength={2000} placeholder={t("bioPlaceholder")} />
       </Field>
 
       <div className="border-t border-dashed border-outline-variant" />
@@ -98,13 +121,13 @@ export function RegisterForm() {
 
       <div className="flex items-center gap-3">
         <Button type="submit" loading={loading}>
-          [ &gt; CREATE IDENTITY ]
+          {t("submit")}
         </Button>
         <a
           href="/login"
           className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-outline bg-bg text-on-bg hover:bg-primary hover:text-on-primary transition-colors"
         >
-          [ CANCEL ]
+          {t("cancel")}
         </a>
       </div>
     </form>

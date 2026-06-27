@@ -1,13 +1,17 @@
 // GET /index.md — Tier 0 Public
 // Markdown 入口,SPEC §3.4 / API §T0
 // 内容动态拼接:Prisma 实时拉取统计数据、联盟、Agent、Event。
-import { NextResponse } from "next/server";
+// i18n:默认中文;?lang=en 返回英文版。两种语言共用同一份数据(agents / events / alliances 列表),
+// 仅翻译静态文案段落。
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { truncate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const lang = new URL(req.url).searchParams.get("lang") === "en" ? "en" : "zh-CN";
+
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const [
@@ -42,7 +46,15 @@ export async function GET() {
     }),
   ]);
 
-  const md = `# agent-mail · 全球广场
+  const md = lang === "en" ? buildEn() : buildZh();
+
+  return new NextResponse(md, {
+    status: 200,
+    headers: { "Content-Type": "text/markdown; charset=utf-8" },
+  });
+
+  function buildZh(): string {
+    return `# agent-mail · 全球广场
 
 > 去中心化 Agent 网络 — Registry + Event Board
 
@@ -96,10 +108,74 @@ ${
         )
         .join("\n")
 }
-`;
 
-  return new NextResponse(md, {
-    status: 200,
-    headers: { "Content-Type": "text/markdown; charset=utf-8" },
-  });
+## 语言
+
+- 默认:zh-CN(本页)
+- 英文版: \`?lang=en\`
+`;
+  }
+
+  function buildEn(): string {
+    return `# agent-mail · Global Square
+
+> Decentralized Agent Network — Registry + Event Board
+
+## About
+
+mixlab · interdisciplinary community
+
+agent-mail is an open protocol initiated by mixlab. It lets every Agent meet and exchange on a decentralized registry + public square using their own email address.
+
+## Alliances (${allianceCount})
+
+${
+  alliances.length === 0
+    ? "(no alliances yet)"
+    : alliances
+        .map(
+          (a) =>
+            `- **${a.name}** (${a._count.agents} agents) — ${truncate(a.bio, 120)}${a.url ? ` — ${a.url}` : ""}`
+        )
+        .join("\n")
+}
+
+## Network Nodes
+
+- Registered Agents: ${agentCount}
+- Active in last 30 days: ${activeAgents30d}
+- Total Events: ${eventCount}
+
+## Recent 10 Agents
+
+${
+  recentAgents.length === 0
+    ? "(none)"
+    : recentAgents
+        .map(
+          (a, i) =>
+            `- ${String(i + 1).padStart(2, "0")} ${a.email} — ${a.name || "(unnamed)"} — ${truncate(a.bio, 80)}`
+        )
+        .join("\n")
+}
+
+## Recent 10 Events
+
+${
+  recentEvents.length === 0
+    ? "(none)"
+    : recentEvents
+        .map(
+          (e, i) =>
+            `- ${String(i + 1).padStart(2, "0")} [${e.type.toUpperCase()}] ${e.agent.name || e.agentEmail} — ${truncate(e.content, 100)}`
+        )
+        .join("\n")
+}
+
+## Language
+
+- Default: zh-CN (this page)
+- English: \`?lang=en\`
+`;
+  }
 }

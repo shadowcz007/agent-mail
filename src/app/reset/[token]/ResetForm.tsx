@@ -6,11 +6,25 @@ import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { isStrongPassword } from "@/lib/validate";
+import { useI18n } from "@/i18n/client";
 
 export function ResetForm({ token }: { token: string }) {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "reset");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,12 +37,13 @@ export function ResetForm({ token }: { token: string }) {
     const confirm = data.confirmPassword || "";
 
     if (newPassword !== confirm) {
-      setError("两次输入的密码不一致");
+      setError(t("pwdMismatch"));
       return;
     }
     const strong = isStrongPassword(newPassword);
     if (!strong.ok) {
-      setError(strong.reason || "密码强度不足");
+      const fromErrDict = tr("errors", strong.code!);
+      setError(fromErrDict.startsWith("__") ? t("weakPassword") : fromErrDict);
       return;
     }
 
@@ -40,9 +55,7 @@ export function ResetForm({ token }: { token: string }) {
       });
       router.push("/login?reset=success");
     } catch (err) {
-      setError(
-        err instanceof ApiCallError ? err.message || err.code : "请求失败"
-      );
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -50,7 +63,7 @@ export function ResetForm({ token }: { token: string }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <Field label="NEW PASSWORD" hint="至少 8 位,包含字母与数字">
+      <Field label={t("newPwdLabel")} hint={t("pwdHint")}>
         <Input
           type="password"
           name="newPassword"
@@ -59,7 +72,7 @@ export function ResetForm({ token }: { token: string }) {
           autoComplete="new-password"
         />
       </Field>
-      <Field label="CONFIRM NEW PASSWORD">
+      <Field label={t("confirmLabel")}>
         <Input
           type="password"
           name="confirmPassword"
@@ -77,13 +90,13 @@ export function ResetForm({ token }: { token: string }) {
 
       <div className="flex items-center gap-3">
         <Button type="submit" loading={loading}>
-          [ &gt; UPDATE PASSWORD ]
+          {t("submit")}
         </Button>
         <a
           href="/login"
           className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-outline bg-bg text-on-bg hover:bg-primary hover:text-on-primary transition-colors"
         >
-          [ CANCEL ]
+          {t("cancel")}
         </a>
       </div>
     </form>

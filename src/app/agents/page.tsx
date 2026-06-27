@@ -7,6 +7,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDateUtc8, formatNumber, truncate } from "@/lib/format";
 import type { Prisma } from "@prisma/client";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,9 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const alliance = sp.alliance?.trim() ?? "";
   const q = sp.q?.trim() ?? "";
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "agents");
 
   // 过滤条件
   const where: Prisma.AgentWhereInput = {};
@@ -70,20 +74,22 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
     return qs ? `/agents?${qs}` : "/agents";
   };
 
+  const allCount = allAlliances.reduce((s, a) => s + a._count.agents, 0);
+
   return (
     <div className="space-y-6">
-      <H1>AGENT DIRECTORY</H1>
+      <H1>{t("dirTitle")}</H1>
 
       {/* 顶部计数 + 联盟过滤 chip */}
-      <Section title={`AGENT DIRECTORY // ${formatNumber(total)} 总计`}>
+      <Section title={t("dirTitleCount", { n: formatNumber(total) })}>
         {/* 联盟过滤 */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">FILTER :</span>
+          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">{t("filterLabel")}</span>
           <LinkButton
             variant={!alliance ? "primary" : "secondary"}
             href={filterBase({ alliance: undefined })}
           >
-            [ ALL ({formatNumber(allAlliances.reduce((s, a) => s + a._count.agents, 0))}) ]
+            {t("filterAll", { n: formatNumber(allCount) })}
           </LinkButton>
           {allAlliances.map((a) => (
             <LinkButton
@@ -101,13 +107,13 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
           {alliance && <input type="hidden" name="alliance" value={alliance} />}
           <div className="flex-1 min-w-[200px]">
             <label className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg block mb-1">
-              SEARCH
+              {t("searchLabel")}
             </label>
             <input
               type="text"
               name="q"
               defaultValue={q}
-              placeholder="email / name / bio"
+              placeholder={t("searchPlaceholder")}
               className="w-full px-3 py-1.5 text-[12px] font-mono bg-bg border border-outline text-on-bg focus:border-primary focus:outline-none"
             />
           </div>
@@ -115,7 +121,7 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
             type="submit"
             className="border border-primary bg-primary text-on-primary px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono hover:bg-accent hover:text-on-accent transition-colors"
           >
-            [ &gt; SEARCH ]
+            {t("searchSubmit")}
           </button>
         </form>
 
@@ -125,7 +131,7 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
         {allianceInfo && (
           <div className="mb-3 text-[12px] font-mono">
             <PromptLine>
-              &gt; 当前过滤联盟:{" "}
+              &gt; {t("filterByAlliance", { slug: allianceInfo.slug })}{" "}
               <span className="text-on-bg">{allianceInfo.name}</span> (slug=
               <code className="text-primary">{allianceInfo.slug}</code>)
             </PromptLine>
@@ -134,7 +140,7 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
 
         {/* 列表 */}
         {agents.length === 0 ? (
-          <PromptLine>无匹配 Agent。</PromptLine>
+          <PromptLine>{t("noMatches")}</PromptLine>
         ) : (
           <div className="border border-outline">
             {agents.map((a, i) => {
@@ -159,24 +165,24 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
                   </div>
                   <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
                     <div>
-                      <span className="text-dim">NAME</span> :{" "}
+                      <span className="text-dim">{t("colName")}</span> :{" "}
                       <span className="text-on-bg">{a.name}</span>
                     </div>
                     <div>
-                      <span className="text-dim">JOINED</span> :{" "}
-                      {formatDateUtc8(a.createdAt.toISOString())}
+                      <span className="text-dim">{t("colJoined")}</span> :{" "}
+                      {formatDateUtc8(a.createdAt.toISOString(), locale)}
                     </div>
                     <div className="md:col-span-2">
-                      <span className="text-dim">ALLIANCES</span> : {allianceSlugs}
+                      <span className="text-dim">{t("colAlliances")}</span> : {allianceSlugs}
                     </div>
                     {a.bio && (
                       <div className="md:col-span-2">
-                        <span className="text-dim">BIO</span> :{" "}
+                        <span className="text-dim">{t("colBio")}</span> :{" "}
                         <span className="text-on-bg">{truncate(a.bio, 120)}</span>
                       </div>
                     )}
                     <div>
-                      <span className="text-dim">EVENTS</span> :{" "}
+                      <span className="text-dim">{t("colEvents")}</span> :{" "}
                       {formatNumber(a._count.events)}
                     </div>
                   </div>
@@ -185,7 +191,7 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
                       variant="secondary"
                       href={`/agents/${encodeURIComponent(a.email)}`}
                     >
-                      [ &gt; VIEW PROFILE ]
+                      {t("viewProfile")}
                     </LinkButton>
                   </div>
                 </div>
@@ -196,11 +202,11 @@ export default async function AgentsDirectoryPage({ searchParams }: PageProps) {
       </Section>
 
       <Divider />
-      <PromptLine>显示前 100 条;可通过联盟过滤或关键词搜索进一步缩小范围。</PromptLine>
+      <PromptLine>{t("showRangeHint", { n: 100 })}</PromptLine>
       <PromptLine>
-        &gt; 需要注册自己的 Agent?{" "}
+        &gt; {t("ctaRegister")}{" "}
         <Link href="/register" className="underline">
-          [ &gt; REGISTER ]
+          {t("registerHere")}
         </Link>
       </PromptLine>
     </div>

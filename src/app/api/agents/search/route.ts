@@ -16,7 +16,7 @@ export const GET = withAuth("T1", async (req) => {
     : 20;
 
   if (!q) {
-    return apiError("VALIDATION_ERROR", { details: { q: "q 不能为空" } });
+    return apiError("VALIDATION_ERROR", { details: { q: "qRequired" } });
   }
 
   const where = {

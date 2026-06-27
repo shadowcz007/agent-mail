@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { useI18n } from "@/i18n/client";
 
 interface Initial {
   name: string;
@@ -17,13 +18,28 @@ interface Initial {
 export function AllianceEditForm({
   slug,
   initial,
+  locale,
 }: {
   slug: string;
   initial: Initial;
+  locale: string;
 }) {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "admin");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,44 +56,46 @@ export function AllianceEditForm({
       });
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiCallError ? err.message || err.code : "请求失败");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
   }
+
+  const currentHint = locale === "zh-CN" ? "当前:" : "Current:";
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-1">
         <label className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg">SLUG</label>
         <div className="text-[13px] font-mono text-on-bg px-2 py-1.5 border border-outline-variant bg-surface-container">
-          {slug} <StatusChip tone="muted">READ-ONLY</StatusChip>
+          {slug} <StatusChip tone="muted">{t("allianceReadOnly")}</StatusChip>
         </div>
-        <PromptLine>创建后不可修改 (URL 稳定性)</PromptLine>
+        <PromptLine>{t("allianceEditSlugHint")}</PromptLine>
       </div>
 
-      <Field label="NAME" hint={`当前: ${initial.name}`}>
+      <Field label={t("allianceEditNameLabel")} hint={`${currentHint} ${initial.name}`}>
         <Input name="name" type="text" defaultValue={initial.name} required maxLength={120} />
       </Field>
 
-      <Field label="BIO" hint="支持多行,显示在联盟主页">
+      <Field label={t("allianceEditBioLabel")} hint={t("allianceEditBioHint")}>
         <Textarea name="bio" defaultValue={initial.bio} required maxLength={2000} />
       </Field>
 
-      <Field label="URL" hint={`当前: ${initial.url || "—"}`}>
-        <Input name="url" type="url" defaultValue={initial.url} placeholder="https://example.com" />
+      <Field label={t("allianceEditUrlLabel")} hint={`${currentHint} ${initial.url || "—"}`}>
+        <Input name="url" type="url" defaultValue={initial.url} placeholder={t("allianceEditUrlPlaceholder")} />
       </Field>
 
       {error && (
-        <PromptLine><StatusChip tone="error">ERROR</StatusChip> {error}</PromptLine>
+        <PromptLine><StatusChip tone="error">{tCommon("error")}</StatusChip> {error}</PromptLine>
       )}
 
       <div className="border-t border-dashed border-outline pt-4 flex gap-2">
         <Button type="submit" variant="primary" loading={loading}>
-          [ &gt; SAVE CHANGES ]
+          {t("allianceEditSubmit")}
         </Button>
         <Button type="button" variant="secondary" onClick={() => router.push("/admin/alliances")}>
-          [ CANCEL ]
+          {t("allianceEditCancel")}
         </Button>
       </div>
     </form>

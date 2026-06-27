@@ -19,7 +19,7 @@ export const POST = withPublic(async (req: NextRequest) => {
 
   const check = isStrongPassword(password);
   if (!check.ok) {
-    return apiError("WEAK_PASSWORD", { message: check.reason });
+    return apiError(check.code || "WEAK_PASSWORD");
   }
 
   const existing = await prisma.agent.findUnique({ where: { email }, select: { id: true } });

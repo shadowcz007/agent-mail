@@ -19,7 +19,7 @@ export const POST = withPublic(async (req: NextRequest) => {
 
   const check = isStrongPassword(newPassword);
   if (!check.ok) {
-    return apiError("WEAK_PASSWORD", { message: check.reason });
+    return apiError(check.code || "WEAK_PASSWORD");
   }
 
   const record = await prisma.passwordResetToken.findUnique({ where: { token } });
@@ -36,5 +36,6 @@ export const POST = withPublic(async (req: NextRequest) => {
     }),
   ]);
 
-  return NextResponse.json({ message: "密码已更新,请登录" });
+  // 不再返回中文 message;前端根据请求类型(redirect ?reset=success)显示成功提示
+  return NextResponse.json({ ok: true });
 });

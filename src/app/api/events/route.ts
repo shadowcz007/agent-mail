@@ -55,7 +55,7 @@ export const POST = withAuth("T2", async (req: NextRequest, { auth }) => {
   try {
     body = await req.json();
   } catch {
-    return apiError("VALIDATION_ERROR", { details: { body: "JSON 解析失败" } });
+    return apiError("VALIDATION_ERROR", { details: { body: "jsonParseFailed" } });
   }
 
   const parsed = EventCreateSchema.safeParse(body);

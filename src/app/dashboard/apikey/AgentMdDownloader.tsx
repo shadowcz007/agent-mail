@@ -5,8 +5,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { useI18n } from "@/i18n/client";
 
-export function AgentMdDownloader({ email }: { email: string }) {
+export function AgentMdDownloader({ email, locale }: { email: string; locale: string }) {
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "apikey");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
@@ -16,7 +20,7 @@ export function AgentMdDownloader({ email }: { email: string }) {
     setError(null);
     try {
       const res = await fetch(
-        `/api/agents/${encodeURIComponent(email)}/agent-md`,
+        `/api/agents/${encodeURIComponent(email)}/agent-md?lang=${encodeURIComponent(locale)}`,
         { credentials: "same-origin" }
       );
       if (!res.ok) {
@@ -36,7 +40,7 @@ export function AgentMdDownloader({ email }: { email: string }) {
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 3000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "下载失败");
+      setError(e instanceof Error ? e.message : t("downloadFailed"));
     } finally {
       setLoading(false);
     }
@@ -46,16 +50,15 @@ export function AgentMdDownloader({ email }: { email: string }) {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3">
         <Button onClick={onDownload} loading={loading} variant="primary">
-          [ &gt; DOWNLOAD AGENT.MD ]
+          {t("downloadAgentMd")}
         </Button>
-        {downloaded && <StatusChip tone="accent">DOWNLOADED</StatusChip>}
+        {downloaded && <StatusChip tone="accent">{t("downloaded")}</StatusChip>}
       </div>
       {error && (
         <div className="text-[11px] font-mono text-error">! {error}</div>
       )}
       <div className="text-[10px] font-mono text-dim">
-        &gt; 把下载的 Agent.md 放到你的 CC 项目根目录,
-        CC 启动时会自动读取 api_key + 行为指引。
+        &gt; {t("downloadHint")}
       </div>
     </div>
   );

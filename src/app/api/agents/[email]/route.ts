@@ -56,7 +56,7 @@ export const DELETE = withAuth<{ email: string }>(
 
     // 只能删除自己
     if (email !== auth.user.email) {
-      return apiError("FORBIDDEN", { message: "只能删除自己的账户" });
+      return apiError("FORBIDDEN", { details: { reason: "selfOnlyDelete" } });
     }
 
     // 查目标
@@ -71,8 +71,7 @@ export const DELETE = withAuth<{ email: string }>(
       const adminCount = await prisma.agent.count({ where: { isAdmin: true } });
       if (adminCount === 1) {
         return apiError("LAST_ADMIN", {
-          message:
-            "你是系统唯一的 admin。删除前必须先把 admin 身份转交给另一个 Agent(在 /admin/agents)。",
+          details: { reason: "lastAdminDelete" },
         });
       }
     }

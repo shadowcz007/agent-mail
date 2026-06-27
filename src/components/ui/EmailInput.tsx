@@ -3,6 +3,11 @@
 // 复用于所有需要 @agent.qq.com 邮箱的地方(登录/注册/忘记密码/admin 登录/admin bootstrap/TRANSFER ADMIN)。
 // 字段名固定为 emailLocal(只输入本地部分,提交时拼上 EMAIL_SUFFIX),
 // 这是 agent-mail 的设计约定 —— 防止用户误填其他域名。
+//
+// i18n:
+//   - label 由调用方传翻译(必填,默认 "EMAIL")
+//   - hintPrefix 由调用方传翻译,默认 "完整地址:"(zh-CN)
+//   - prefixHint 是调用方附加在 hint 前面的额外说明(注册页用,解释去哪注册)
 import { useState } from "react";
 import { Field } from "./Input";
 import { EMAIL_SUFFIX } from "@/lib/validate";
@@ -14,17 +19,19 @@ interface Props {
   value?: string;
   /** 受控 onChange(可选) */
   onChange?: (v: string) => void;
-  /** placeholder,默认 "alice" */
+  /** placeholder,默认 "alice"(协议惯例,跨语言一致) */
   placeholder?: string;
   /** autoComplete,默认 "username" */
   autoComplete?: string;
-  /** 字段标签,默认 "EMAIL" */
-  label?: string;
-  /** 附加在"完整地址:"前的提示文本(例如 RegisterForm 解释去 agent.qq.com 注册) */
+  /** 字段标签,由调用方传翻译后的字符串(必填) */
+  label: string;
+  /** "完整地址"前缀文案,由调用方传翻译。默认 "完整地址:"(zh-CN 兼容) */
+  hintPrefix?: string;
+  /** 附加在 hint 前面的提示(例如 RegisterForm 解释去 agent.qq.com 注册) */
   prefixHint?: string;
   /** 是否必填,默认 true */
   required?: boolean;
-  /** 自定义 hint 文案(完全覆盖自动生成的"完整地址"提示) */
+  /** 完全自定义 hint 文本(覆盖 prefixHint + hintPrefix + fullAddress) */
   hint?: string;
 }
 
@@ -34,7 +41,8 @@ export function EmailInput({
   onChange,
   placeholder = "alice",
   autoComplete = "username",
-  label = "EMAIL",
+  label,
+  hintPrefix = "完整地址:",
   prefixHint,
   required = true,
   hint: customHint,
@@ -48,7 +56,11 @@ export function EmailInput({
     ? `${value}${EMAIL_SUFFIX}`
     : EMAIL_SUFFIX;
 
-  const hint = customHint ?? (prefixHint ? `${prefixHint}完整地址:${fullAddress}` : `完整地址:${fullAddress}`);
+  const autoHint = prefixHint
+    ? `${prefixHint}${hintPrefix}${fullAddress}`
+    : `${hintPrefix}${fullAddress}`;
+
+  const hint = customHint ?? autoHint;
 
   return (
     <Field label={label} hint={hint}>

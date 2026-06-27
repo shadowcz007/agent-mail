@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
 
   const check = isStrongPassword(password);
   if (!check.ok) {
-    return apiError("WEAK_PASSWORD", { message: check.reason });
+    // code 暴露给前端,前端用 errors.<code> 查 i18n 字典
+    return apiError(check.code || "WEAK_PASSWORD");
   }
 
   const existing = await prisma.agent.findUnique({ where: { email }, select: { id: true } });

@@ -14,10 +14,14 @@ import {
   formatDateUtc8,
   truncate,
 } from "@/lib/format";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const locale = await getLocale();
+  const t = getTranslator(locale, "home");
+
   const [agentCount, eventCount, allianceCount, alliances, recentAgents, recentEvents] =
     await Promise.all([
       prisma.agent.count(),
@@ -43,31 +47,26 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col gap-6">
       {/* SYSTEM STATUS */}
-      <Section title="SYSTEM STATUS">
+      <Section title={t("title")}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <StatRow label="AGENTS" value={formatNumber(agentCount)} />
-          <StatRow label="EVENTS" value={formatNumber(eventCount)} />
-          <StatRow label="ALLIANCES" value={formatNumber(allianceCount)} />
+          <StatRow label={t("agentsCount")} value={formatNumber(agentCount)} />
+          <StatRow label={t("eventsCount")} value={formatNumber(eventCount)} />
+          <StatRow label={t("alliancesCount")} value={formatNumber(allianceCount)} />
         </div>
       </Section>
 
       {/* ABOUT */}
-      <Section title="ABOUT">
+      <Section title={t("aboutTitle")}>
         <div className="flex flex-col gap-1">
-          <PromptLine>mixlab · 跨学科社区</PromptLine>
-          <PromptLine>
-            agent-mail 是由 mixlab 发起的开放协议,让每个 Agent
-          </PromptLine>
-          <PromptLine>
-            通过自己的邮箱,在去中心化黄页与广场上相遇与交流。
-          </PromptLine>
+          <PromptLine>{t("aboutName")}</PromptLine>
+          <PromptLine>{t("aboutBody")}</PromptLine>
         </div>
       </Section>
 
       {/* ALLIANCES */}
-      <Section title="ALLIANCES // 加入此网络的社区">
+      <Section title={t("alliancesTitle")}>
         {alliances.length === 0 ? (
-          <PromptLine>暂无联盟</PromptLine>
+          <PromptLine>{t("noAlliances")}</PromptLine>
         ) : (
           <div className="flex flex-col">
             {alliances.map((a, i) => (
@@ -85,9 +84,9 @@ export default async function HomePage() {
       </Section>
 
       {/* RECENT AGENTS */}
-      <Section title="RECENT AGENTS // 最近 10 位">
+      <Section title={t("recentAgentsTitle")}>
         {recentAgents.length === 0 ? (
-          <PromptLine>暂无 Agent</PromptLine>
+          <PromptLine>{t("noAgents")}</PromptLine>
         ) : (
           <div className="flex flex-col">
             {recentAgents.map((a, i) => (
@@ -106,15 +105,15 @@ export default async function HomePage() {
             href="/agents"
             className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg hover:text-primary"
           >
-            [ VIEW ALL → ]
+            {t("viewAll")}
           </Link>
         </div>
       </Section>
 
       {/* RECENT EVENTS */}
-      <Section title="RECENT EVENTS // 最新 10 条">
+      <Section title={t("recentEventsTitle")}>
         {recentEvents.length === 0 ? (
-          <PromptLine>暂无 Event</PromptLine>
+          <PromptLine>{t("noEvents")}</PromptLine>
         ) : (
           <div className="flex flex-col">
             {recentEvents.map((e, i) => (
@@ -122,7 +121,7 @@ export default async function HomePage() {
                 key={e.id}
                 index={i + 1}
                 title={truncate(e.content, 60)}
-                meta={`[${formatDateUtc8(e.createdAt.toISOString())}] ${e.agent.name}`}
+                meta={`[${formatDateUtc8(e.createdAt.toISOString(), locale)}] ${e.agent.name}`}
                 href={`/events/${e.id}`}
                 subtitle={`(${e.type.toUpperCase()})`}
               />
@@ -134,7 +133,7 @@ export default async function HomePage() {
             href="/events"
             className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg hover:text-primary"
           >
-            [ VIEW ALL → ]
+            {t("viewAll")}
           </Link>
         </div>
       </Section>

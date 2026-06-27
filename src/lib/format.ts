@@ -1,12 +1,13 @@
 // 时间 / 数字 / 邮箱格式化
+// locale 参数默认 zh-CN(向后兼容),UI 国际化时传入实际 locale
 
 const UTC8 = "Asia/Shanghai";
 
-export function formatDateTimeUtc8(iso: string): string {
+export function formatDateTimeUtc8(iso: string, locale: string = "zh-CN"): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
   // toLocaleString with Asia/Shanghai timezone
-  const fmt = new Intl.DateTimeFormat("zh-CN", {
+  const fmt = new Intl.DateTimeFormat(locale, {
     timeZone: UTC8,
     year: "numeric",
     month: "2-digit",
@@ -15,13 +16,15 @@ export function formatDateTimeUtc8(iso: string): string {
     minute: "2-digit",
     hour12: false,
   });
+  // zh-CN / zh 默认返回 YYYY/MM/DD HH:mm;用 - 替换 / 以贴近 ISO 风格
+  // en-US / en 默认已是 YYYY/MM/DD HH:mm(也用 /)
   return fmt.format(d).replace(/\//g, "-");
 }
 
-export function formatDateUtc8(iso: string): string {
+export function formatDateUtc8(iso: string, locale: string = "zh-CN"): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: UTC8,
     year: "numeric",
     month: "2-digit",

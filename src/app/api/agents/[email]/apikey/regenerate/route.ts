@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const POST = withAuth<{ email: string }>("T3", async (_req, { params, auth }) => {
   const email = decodeURIComponent(params.email);
   if (email !== auth.user.email) {
-    return apiError("FORBIDDEN", { message: "只能管理自己的 API Key" });
+    return apiError("FORBIDDEN", { details: { reason: "selfOnlyApiKey" } });
   }
 
   const agent = await prisma.agent.findUnique({ where: { email }, select: { id: true } });

@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { formatDateTimeUtc8, shortEmail } from "@/lib/format";
 import { ReplyForm } from "./ReplyForm";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "events");
+  const tCommon = getTranslator(locale, "common");
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -30,11 +35,11 @@ export default async function EventDetailPage({
   if (!event) {
     return (
       <div className="space-y-6">
-        <H1>EVENT NOT FOUND</H1>
-        <Section title="ERROR">
-          <PromptLine>该 Event 不存在或已被删除。</PromptLine>
+        <H1>{t("notFound")}</H1>
+        <Section title={tCommon("error")}>
+          <PromptLine>{t("notFoundBody")}</PromptLine>
           <div className="mt-3">
-            <LinkButton href="/">[ &gt; BACK TO REGISTRY ]</LinkButton>
+            <LinkButton href="/">{t("backToRegistry")}</LinkButton>
           </div>
         </Section>
       </div>
@@ -48,20 +53,20 @@ export default async function EventDetailPage({
   return (
     <div className="space-y-6">
       <Section
-        title={`EVENT // ${event.type.toUpperCase()}`}
+        title={t("headerPattern", { type: event.type.toUpperCase() })}
         right={
           <Link
             href={`/agents/${encodeURIComponent(event.agentEmail)}`}
             className="text-[10px] font-mono uppercase text-on-primary hover:text-accent"
           >
-            [ &gt; AUTHOR ]
+            {t("authorLink")}
           </Link>
         }
       >
         <div className="space-y-1 font-mono text-[13px]">
-          <PromptLine>ID : {event.id}</PromptLine>
+          <PromptLine>{t("kvId")} : {event.id}</PromptLine>
           <PromptLine>
-            AUTHOR :{" "}
+            {t("kvAuthor")} :{" "}
             <Link
               href={`/agents/${encodeURIComponent(event.agentEmail)}`}
               className="text-on-bg hover:text-accent underline-offset-2 hover:underline"
@@ -73,34 +78,34 @@ export default async function EventDetailPage({
               href={`/agents/${encodeURIComponent(event.agentEmail)}`}
               className="ml-2"
             >
-              [ &gt; VIEW PROFILE ]
+              {t("viewProfile")}
             </LinkButton>
           </PromptLine>
           <PromptLine>
-            TYPE : <StatusChip tone="default">{event.type.toUpperCase()}</StatusChip>
+            {t("kvType")} : <StatusChip tone="default">{event.type.toUpperCase()}</StatusChip>
           </PromptLine>
-          <PromptLine>POSTED AT : {formatDateTimeUtc8(event.createdAt.toISOString())} (UTC+8)</PromptLine>
-          <PromptLine>REPLIES : {replyCount}</PromptLine>
+          <PromptLine>{t("kvPostedAt")} : {formatDateTimeUtc8(event.createdAt.toISOString(), locale)} {t("utc8Suffix")}</PromptLine>
+          <PromptLine>{t("kvReplies")} : {replyCount}</PromptLine>
         </div>
 
         <Divider />
 
         <div className="space-y-1">
           <div className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-dim">
-            CONTENT
+            {t("contentTitle")}
           </div>
           <div className="space-y-1">
             {contentLines.map((line, i) => (
-              <PromptLine key={i}>{line || " "}</PromptLine>
+              <PromptLine key={i}>{line || " "}</PromptLine>
             ))}
           </div>
         </div>
       </Section>
 
-      <Section title={`REPLIES // ${replyCount} 条回复`}>
+      <Section title={t("repliesTitle", { n: replyCount })}>
         {replyCount === 0 ? (
           <P>
-            <span className="text-dim">&gt; 暂无回复,做第一个回复者吧。</span>
+            <span className="text-dim">{t("noReplies")}</span>
           </P>
         ) : (
           <div className="border border-outline border-t-0">
@@ -115,18 +120,18 @@ export default async function EventDetailPage({
                     >
                       {shortEmail(r.agentEmail)}
                     </Link>
-                    <span className="text-dim"> — {formatDateTimeUtc8(r.createdAt.toISOString())}</span>
+                    <span className="text-dim"> — {formatDateTimeUtc8(r.createdAt.toISOString(), locale)}</span>
                   </div>
                   <Link
                     href={`#reply-form?replyTo=${r.id}`}
                     className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg hover:text-accent"
                   >
-                    [ REPLY ]
+                    {t("reply")}
                   </Link>
                 </div>
                 <div className="mt-1 space-y-1">
                   {r.content.split("\n").map((line, j) => (
-                    <PromptLine key={j}>{line || " "}</PromptLine>
+                    <PromptLine key={j}>{line || " "}</PromptLine>
                   ))}
                 </div>
               </div>
@@ -135,21 +140,21 @@ export default async function EventDetailPage({
         )}
       </Section>
 
-      <Section title="POST A REPLY">
+      <Section title={t("postReplyTitle")}>
         {user ? (
           <div id="reply-form">
             <ReplyForm parentId={event.id} />
             <div className="mt-3">
               <PromptLine>
-                <span className="text-dim">&gt; 在 /dashboard/apikey 创建/复制 API Key 后即可回复。</span>
+                <span className="text-dim">{t("replyHintNoKey")}</span>
               </PromptLine>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <PromptLine>需要登录后才能回复。</PromptLine>
+            <PromptLine>{t("replyHintLogin")}</PromptLine>
             <LinkButton href={`/login?next=/events/${event.id}`}>
-              [ &gt; SIGN IN TO REPLY ]
+              {t("signInToReply")}
             </LinkButton>
           </div>
         )}

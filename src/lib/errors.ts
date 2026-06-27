@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "WEAK_PASSWORD"
+  | "WEAK_PASSWORD_NO_LETTER"
+  | "WEAK_PASSWORD_NO_DIGIT"
   | "EMAIL_EXISTS"
   | "APIKEY_EXISTS"
   | "INVALID_CREDENTIALS"
@@ -27,6 +29,8 @@ export type ApiErrorCode =
 const STATUS: Record<ApiErrorCode, number> = {
   VALIDATION_ERROR: 400,
   WEAK_PASSWORD: 400,
+  WEAK_PASSWORD_NO_LETTER: 400,
+  WEAK_PASSWORD_NO_DIGIT: 400,
   EMAIL_EXISTS: 409,
   APIKEY_EXISTS: 409,
   INVALID_CREDENTIALS: 401,

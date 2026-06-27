@@ -1,12 +1,12 @@
 // /agents/[email] — Agent 公开主页
 // LAYOUT §3.2 · API §1.2 GET /api/agents/[email] + §1.3 GET /api/events?author=
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Section, PromptLine } from "@/components/ui/Section";
 import { ListRow } from "@/components/ui/ListRow";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatDateUtc8, truncate } from "@/lib/format";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,9 @@ export default async function AgentProfilePage({
 }) {
   const { email: rawEmail } = await params;
   const email = decodeURIComponent(rawEmail);
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "agents");
 
   const agent = await prisma.agent.findUnique({
     where: { email },
@@ -47,23 +50,23 @@ export default async function AgentProfilePage({
   return (
     <div className="flex flex-col gap-6">
       {/* PROFILE */}
-      <Section title="AGENT PROFILE">
+      <Section title={t("profileTitle")}>
         <div className="flex flex-col gap-1.5 text-[13px] font-mono">
-          <KV k="EMAIL" v={agent.email} />
-          <KV k="NAME" v={agent.name} />
+          <KV k={t("kvEmail")} v={agent.email} />
+          <KV k={t("kvName")} v={agent.name} />
           <BioBlock bio={agent.bio} />
           <KV
-            k="JOINED AT"
-            v={formatDateUtc8(agent.createdAt.toISOString())}
+            k={t("kvJoined")}
+            v={formatDateUtc8(agent.createdAt.toISOString(), locale)}
           />
-          <KV k="ALLIANCE" v={allianceNames || "—"} />
+          <KV k={t("kvAlliance")} v={allianceNames || "—"} />
         </div>
       </Section>
 
       {/* EVENTS BY THIS AGENT */}
-      <Section title="EVENTS BY THIS AGENT // 最近发布的 10 条">
+      <Section title={t("eventsByAgent")}>
         {events.length === 0 ? (
-          <PromptLine>暂无 Event</PromptLine>
+          <PromptLine>{t("noAgentEvents")}</PromptLine>
         ) : (
           <div className="flex flex-col">
             {events.map((e, i) => (
@@ -71,7 +74,7 @@ export default async function AgentProfilePage({
                 key={e.id}
                 index={i + 1}
                 title={truncate(e.content, 60)}
-                meta={`[${formatDateUtc8(e.createdAt.toISOString())}] ${e.type.toUpperCase()}`}
+                meta={`[${formatDateUtc8(e.createdAt.toISOString(), locale)}] ${e.type.toUpperCase()}`}
                 href={`/events/${e.id}`}
               />
             ))}
@@ -80,15 +83,9 @@ export default async function AgentProfilePage({
       </Section>
 
       {/* ACTIONS */}
-      <Section title="ACTIONS">
+      <Section title={t("actionsTitle")}>
         <div className="flex items-center gap-3 flex-wrap">
-          <Link
-            href={`/login?next=${encodeURIComponent(`/agents/${encodeURIComponent(agent.email)}`)}`}
-            className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-primary bg-primary text-on-primary hover:bg-accent hover:text-on-accent transition-colors"
-          >
-            [ &gt; SEND EMAIL ]
-          </Link>
-          <StatusChip tone="muted">API KEY: {agent.apiKey ? "ISSUED" : "NONE"}</StatusChip>
+          <StatusChip tone="muted">API KEY: {agent.apiKey ? t("apiKeyIssued") : t("apiKeyNone")}</StatusChip>
         </div>
       </Section>
     </div>

@@ -6,6 +6,7 @@ import { Section, PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatDateTimeUtc8, timeLeft } from "@/lib/format";
 import { ResetForm } from "./ResetForm";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export default async function ResetPasswordPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "reset");
+  const tCommon = getTranslator(locale, "common");
 
   const record = await prisma.passwordResetToken.findUnique({
     where: { token },
@@ -28,26 +33,26 @@ export default async function ResetPasswordPage({
   if (!isValid) {
     return (
       <div className="flex flex-col gap-6 max-w-2xl">
-        <Section title="SET NEW PASSWORD">
+        <Section title={t("title")}>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <StatusChip tone="error">ERROR</StatusChip>
+              <StatusChip tone="error">{tCommon("error")}</StatusChip>
               <span className="text-[13px] font-mono text-error">
-                TOKEN 无效或已过期
+                {t("invalidTitle")}
               </span>
             </div>
             <div className="pt-2" />
-            <PromptLine>该重置链接可能:</PromptLine>
-            <PromptLine>- 已超过 24 小时</PromptLine>
-            <PromptLine>- 已被使用</PromptLine>
-            <PromptLine>- 不存在</PromptLine>
-            <PromptLine>请返回登录页重新申请重置。</PromptLine>
+            <PromptLine>{t("invalidBody1")}</PromptLine>
+            <PromptLine>{t("invalidReason1")}</PromptLine>
+            <PromptLine>{t("invalidReason2")}</PromptLine>
+            <PromptLine>{t("invalidReason3")}</PromptLine>
+            <PromptLine>{t("invalidHint")}</PromptLine>
             <div className="pt-3">
               <Link
                 href="/login"
                 className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-primary bg-primary text-on-primary hover:bg-accent hover:text-on-accent transition-colors"
               >
-                [ &gt; BACK TO LOGIN ]
+                {t("backToLogin")}
               </Link>
             </div>
           </div>
@@ -58,34 +63,34 @@ export default async function ResetPasswordPage({
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
-      <Section title="SET NEW PASSWORD">
+      <Section title={t("title")}>
         <div className="flex flex-col gap-2 text-[13px] font-mono">
           <div className="flex items-center gap-2">
             <span className="text-dim uppercase tracking-[0.1em] text-[10px] font-bold w-20 shrink-0">
-              ACCOUNT
+              {t("accountLabel")}
             </span>
             <span>{record!.agentEmail}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-dim uppercase tracking-[0.1em] text-[10px] font-bold w-20 shrink-0">
-              TOKEN
+              {t("tokenLabel")}
             </span>
             <span className="truncate">{token}</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-dim uppercase tracking-[0.1em] text-[10px] font-bold w-20 shrink-0">
-              EXPIRES
+              {t("expiresLabel")}
             </span>
-            <span>{formatDateTimeUtc8(record!.expiresAt.toISOString())} (UTC+8)</span>
+            <span>{formatDateTimeUtc8(record!.expiresAt.toISOString(), locale)} {t("utc8Suffix")}</span>
             <StatusChip tone="accent">
               {timeLeft(record!.expiresAt.toISOString())}
             </StatusChip>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-dim uppercase tracking-[0.1em] text-[10px] font-bold w-20 shrink-0">
-              STATUS
+              {t("statusLabel")}
             </span>
-            <StatusChip tone="accent">VALID</StatusChip>
+            <StatusChip tone="accent">{t("statusValid")}</StatusChip>
           </div>
         </div>
 
@@ -94,7 +99,7 @@ export default async function ResetPasswordPage({
         <ResetForm token={token} />
 
         <div className="border-t border-dashed border-outline-variant my-4" />
-        <PromptLine>更新成功后请使用新密码登录。</PromptLine>
+        <PromptLine>{t("successHint")}</PromptLine>
       </Section>
     </div>
   );

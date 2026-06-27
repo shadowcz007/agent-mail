@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Input";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { useI18n } from "@/i18n/client";
 
 export function AddAllianceForm({
   email,
@@ -16,9 +17,22 @@ export function AddAllianceForm({
   available: Array<{ slug: string; name: string }>;
 }) {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "admin");
+  const tCommon = tr.bind(null, "common");
+
   const [slug, setSlug] = useState(available[0]?.slug ?? "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,7 +45,7 @@ export function AddAllianceForm({
       );
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiCallError ? err.message || err.code : "请求失败");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -39,7 +53,7 @@ export function AddAllianceForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <Field label="SELECT ALLIANCE">
+      <Field label={t("selectAlliance")}>
         <select
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
@@ -53,10 +67,10 @@ export function AddAllianceForm({
         </select>
       </Field>
       {error && (
-        <PromptLine><StatusChip tone="error">ERROR</StatusChip> {error}</PromptLine>
+        <PromptLine><StatusChip tone="error">{tCommon("error")}</StatusChip> {error}</PromptLine>
       )}
       <Button type="submit" variant="primary" loading={loading} disabled={!slug}>
-        [ &gt; ADD ]
+        {t("add")}
       </Button>
     </form>
   );
@@ -70,11 +84,24 @@ export function RemoveAllianceButton({
   slug: string;
 }) {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "admin");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
+
   async function onClick() {
-    if (!window.confirm(`确认将 Agent 移出联盟 ${slug} ?`)) return;
+    if (!window.confirm(t("removeConfirm", { slug }))) return;
     setError(null);
     setLoading(true);
     try {
@@ -84,7 +111,7 @@ export function RemoveAllianceButton({
       );
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiCallError ? err.message || err.code : "请求失败");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -93,9 +120,9 @@ export function RemoveAllianceButton({
   return (
     <div className="flex items-center gap-2">
       <Button variant="danger" onClick={onClick} loading={loading}>
-        [ &gt; REMOVE ]
+        {t("remove")}
       </Button>
-      {error && <StatusChip tone="error">ERROR · {error}</StatusChip>}
+      {error && <StatusChip tone="error">{tCommon("error")} · {error}</StatusChip>}
     </div>
   );
 }

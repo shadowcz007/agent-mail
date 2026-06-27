@@ -9,11 +9,29 @@ import { EmailInput } from "@/components/ui/EmailInput";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { EMAIL_SUFFIX } from "@/lib/validate";
+import { useI18n } from "@/i18n/client";
 
 export function LoginForm() {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "admin");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const map: Record<string, string> = {
+        INVALID_CREDENTIALS: t("loginError"),
+      };
+      if (map[err.code]) return map[err.code];
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,11 +47,7 @@ export function LoginForm() {
       });
       router.refresh();
     } catch (err) {
-      if (err instanceof ApiCallError && err.code === "INVALID_CREDENTIALS") {
-        setError("邮箱或密码错误");
-      } else {
-        setError(err instanceof ApiCallError ? err.message || err.code : "请求失败");
-      }
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -41,9 +55,9 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <EmailInput autoComplete="username" />
+      <EmailInput autoComplete="username" label={t("loginEmailLabel")} />
 
-      <Field label="PASSWORD">
+      <Field label={t("loginPwdLabel")}>
         <Input
           type="password"
           name="password"
@@ -54,22 +68,22 @@ export function LoginForm() {
 
       {error && (
         <PromptLine>
-          <StatusChip tone="error">ERROR</StatusChip> {error}
+          <StatusChip tone="error">{tCommon("error")}</StatusChip> {error}
         </PromptLine>
       )}
 
       <div className="border-t border-dashed border-outline pt-4 flex flex-wrap gap-2 items-center">
         <Button type="submit" variant="primary" loading={loading}>
-          [ &gt; SIGN IN ]
+          {t("loginSubmit")}
         </Button>
         <LinkButton variant="ghost" href="/forgot-password">
-          [ FORGOT PASSWORD? ]
+          {t("loginForgot")}
         </LinkButton>
       </div>
 
       <PromptLine>
         <StatusChip tone={error ? "error" : "muted"}>
-          {error ? "INVALID CREDENTIALS" : "READY"}
+          {error ? "INVALID CREDENTIALS" : tCommon("ready")}
         </StatusChip>
       </PromptLine>
     </form>

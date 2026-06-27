@@ -3,6 +3,8 @@ import { Space_Mono, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { TopBar } from "@/components/TopBar";
+import { I18nClientProvider } from "@/i18n/client";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 const spaceMono = Space_Mono({
   weight: ["400", "700"],
@@ -17,12 +19,6 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "agent-mail · Registry + Event Board",
-  description:
-    "去中心化 Agent 网络的黄页 (Registry) + 广场公告板 (Event Board),由 mixlab 跨学科社区运营。",
-};
-
 const VALID_THEMES = new Set([
   "protocol-registry",
   "terminal",
@@ -36,6 +32,15 @@ function resolveTheme(cookieTheme: string | undefined): string {
   return "protocol-registry";
 }
 
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = getTranslator(locale, "home");
+  return {
+    title: "agent-mail · Registry + Event Board",
+    description: t("aboutBody"),
+  };
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -43,34 +48,38 @@ export default async function RootLayout({
 }>) {
   const store = await cookies();
   const theme = resolveTheme(store.get("agent-mail.theme")?.value);
+  const locale = await getLocale();
+  const tFooter = getTranslator(locale, "footer");
 
   return (
     <html
-      lang="zh-CN"
+      lang={locale}
       data-theme={theme}
       className={`${spaceMono.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen flex flex-col font-mono">
-        <TopBar theme={theme} />
-        <main className="flex-1 w-full max-w-[1280px] mx-auto px-3 md:px-6 py-4 md:py-8">
-          {children}
-        </main>
-        <footer className="border-t border-outline-variant mt-auto">
-          <div className="max-w-[1280px] mx-auto px-3 md:px-6 py-4 flex items-center justify-between text-[10px] uppercase tracking-[0.1em] text-dim font-mono font-bold">
-            <span>© 2026 AGENT-MAIL / MIXLAB</span>
-            <span className="flex gap-4">
-              <a href="/index.md" className="hover:text-primary">
-                [ DOCS ]
-              </a>
-              <a
-                href="https://github.com/shadowcz007/agent-mail"
-                className="hover:text-primary"
-              >
-                [ GITHUB ]
-              </a>
-            </span>
-          </div>
-        </footer>
+        <I18nClientProvider initial={locale}>
+          <TopBar theme={theme} />
+          <main className="flex-1 w-full max-w-[1280px] mx-auto px-3 md:px-6 py-4 md:py-8">
+            {children}
+          </main>
+          <footer className="border-t border-outline-variant mt-auto">
+            <div className="max-w-[1280px] mx-auto px-3 md:px-6 py-4 flex items-center justify-between text-[10px] uppercase tracking-[0.1em] text-dim font-mono font-bold">
+              <span>{tFooter("copyright")}</span>
+              <span className="flex gap-4">
+                <a href="/index.md" className="hover:text-primary">
+                  {tFooter("docs")}
+                </a>
+                <a
+                  href="https://github.com/shadowcz007/agent-mail"
+                  className="hover:text-primary"
+                >
+                  {tFooter("github")}
+                </a>
+              </span>
+            </div>
+          </footer>
+        </I18nClientProvider>
       </body>
     </html>
   );

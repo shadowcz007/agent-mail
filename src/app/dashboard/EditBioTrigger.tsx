@@ -2,41 +2,44 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field, Textarea } from "@/components/ui/Input";
+import { useI18n } from "@/i18n/client";
 
 export function EditBioTrigger({ bio }: { bio: string }) {
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "dashboard");
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button variant="secondary" onClick={() => setOpen(true)}>
-        [ EDIT BIO ]
+        {t("editBio")}
       </Button>
       {open && (
         <div className="fixed inset-0 z-50 bg-primary/40 flex items-center justify-center p-4">
           <div className="bg-bg border border-outline w-full max-w-lg">
             <div className="bg-primary text-on-primary px-3 py-1.5 flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-[0.1em] font-mono">
-                EDIT BIO
+                {t("editBioTitle")}
               </span>
               <button
                 onClick={() => setOpen(false)}
                 className="text-[11px] font-bold font-mono text-on-primary hover:text-accent"
               >
-                [ × ]
+                {t("editBioClose")}
               </button>
             </div>
             <div className="p-3 flex flex-col gap-3">
-              <Field label="BIO">
+              <Field label={t("editBioField")}>
                 <Textarea defaultValue={bio} rows={5} maxLength={500} />
               </Field>
               <div className="text-warning text-[11px] font-mono">
-                ! MVP: PATCH /api/agents/[email] 暂未实现,提交仅作占位。
+                {t("editBioHint")}
               </div>
               <div className="flex gap-2">
                 <Button type="button" onClick={() => setOpen(false)}>
-                  [ &gt; SAVE ]
+                  {t("editBioSave")}
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  [ CANCEL ]
+                  {t("editBioCancel")}
                 </Button>
               </div>
             </div>

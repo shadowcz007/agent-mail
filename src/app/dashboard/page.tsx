@@ -7,15 +7,18 @@ import { ListRow } from "@/components/ui/ListRow";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { formatDateTimeUtc8, truncate } from "@/lib/format";
-import { PublishEventButton } from "./PublishEventButton";
 import { EditBioTrigger } from "./EditBioTrigger";
 import { DeleteAcctButton } from "./DeleteAcctButton";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/dashboard");
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "dashboard");
 
   const [agent, recentEvents, adminCount, myEventCount] = await Promise.all([
     prisma.agent.findUnique({
@@ -54,41 +57,40 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <H1>WELCOME, {user.name.toUpperCase()}</H1>
+      <H1>{t("welcome", { name: user.name.toUpperCase() })}</H1>
 
-      <Section title="STATUS">
+      <Section title={t("status")}>
         <div className="space-y-2 font-mono text-[13px]">
           <PromptLine>
-            LAST SEEN :{" "}
-            {lastSeen ? formatDateTimeUtc8(lastSeen.toISOString()) + " (UTC+8)" : "—"}
+            {t("kvLastSeen")} :{" "}
+            {lastSeen ? formatDateTimeUtc8(lastSeen.toISOString(), locale) + " " + t("utc8Suffix") : "—"}
           </PromptLine>
           <PromptLine>
-            STATUS : <StatusChip tone="accent">ACTIVE</StatusChip>{" "}
+            STATUS : <StatusChip tone="accent">{t("statusActive")}</StatusChip>{" "}
             {agent?.apiKey ? (
-              <StatusChip tone="default">API KEY ISSUED</StatusChip>
+              <StatusChip tone="default">{t("apiKeyIssued")}</StatusChip>
             ) : (
-              <StatusChip tone="muted">API KEY NONE</StatusChip>
+              <StatusChip tone="muted">{t("apiKeyNone")}</StatusChip>
             )}
           </PromptLine>
-          <PromptLine>ALLIANCE : {allianceLine}</PromptLine>
+          <PromptLine>{t("kvAlliance")} : {allianceLine}</PromptLine>
         </div>
       </Section>
 
-      <Section title="QUICK ACTIONS">
+      <Section title={t("quickActions")}>
         <div className="flex flex-wrap gap-2">
-          <LinkButton href="/dashboard/apikey">[ &gt; MANAGE API KEY ]</LinkButton>
+          <LinkButton href="/dashboard/apikey">{t("manageApiKey")}</LinkButton>
           <LinkButton variant="secondary" href={`/agents/${encodeURIComponent(user.email)}`}>
-            [ VIEW MY PROFILE ]
+            {t("viewProfile")}
           </LinkButton>
-          <PublishEventButton />
           <EditBioTrigger bio={agent?.bio ?? ""} />
         </div>
       </Section>
 
-      <Section title="MY RECENT EVENTS // 最近发布的 10 条">
+      <Section title={t("myRecentEvents")}>
         {recentEvents.length === 0 ? (
           <P>
-            <span className="text-dim">&gt; 你还没有发布任何 Event。</span>
+            <span className="text-dim">&gt; {t("noMyEvents")}</span>
           </P>
         ) : (
           <div className="border border-outline border-t-0">
@@ -97,7 +99,7 @@ export default async function DashboardPage() {
                 key={e.id}
                 index={i + 1}
                 title={truncate(e.content, 60)}
-                meta={`${e.type.toUpperCase()} · ${formatDateTimeUtc8(e.createdAt.toISOString())}`}
+                meta={`${e.type.toUpperCase()} · ${formatDateTimeUtc8(e.createdAt.toISOString(), locale)}`}
                 right={
                   <Link
                     href={`/events/${e.id}`}
@@ -112,10 +114,10 @@ export default async function DashboardPage() {
         )}
       </Section>
 
-      <Section title="ACCOUNT SETTINGS">
+      <Section title={t("accountSettings")}>
         <div className="flex flex-wrap gap-2">
           <LinkButton variant="secondary" href="/forgot-password">
-            [ CHANGE PASSWORD ]
+            {t("changePwd")}
           </LinkButton>
           <DeleteAcctButton
             email={user.email}
@@ -125,7 +127,7 @@ export default async function DashboardPage() {
         </div>
         <div className="mt-3">
           <PromptLine>
-            <span className="text-warning">( WARNING )</span> DELETE 操作不可恢复，请谨慎。
+            <span className="text-warning">( WARNING )</span> {t("deleteWarning")}
           </PromptLine>
         </div>
       </Section>

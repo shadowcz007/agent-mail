@@ -5,12 +5,17 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { formatDateUtc8, formatNumber, truncate } from "@/lib/format";
 import { DeleteAllianceButton } from "./delete-button";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAlliancesPage() {
   const user = await getCurrentUser();
-  if (!user || !user.isAdmin) return <AccessDenied />;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "admin");
+
+  if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
   const alliances = await prisma.alliance.findMany({
     orderBy: { createdAt: "asc" },
@@ -20,11 +25,11 @@ export default async function AdminAlliancesPage() {
 
   return (
     <div className="space-y-6">
-      <H1>ALLIANCE LIST</H1>
+      <H1>{t("alliancesTitle")}</H1>
 
-      <Section title={`ALLIANCE LIST // ${formatNumber(total)} 总计`}>
+      <Section title={t("alliancesTitleCount", { n: formatNumber(total) })}>
         {alliances.length === 0 ? (
-          <PromptLine>暂无联盟。</PromptLine>
+          <PromptLine>{t("alliancesNone")}</PromptLine>
         ) : (
           <div className="border border-outline">
             {alliances.map((a, i) => (
@@ -49,7 +54,7 @@ export default async function AdminAlliancesPage() {
                     <span className="text-dim">BIO</span> : {truncate(a.bio, 120)}
                   </div>
                   <div><span className="text-dim">URL</span> : {a.url ?? "—"}</div>
-                  <div><span className="text-dim">JOINED</span> : {formatDateUtc8(a.createdAt.toISOString())}</div>
+                  <div><span className="text-dim">JOINED</span> : {formatDateUtc8(a.createdAt.toISOString(), locale)}</div>
                 </div>
                 <div className="mt-2 pl-11 flex flex-wrap gap-2">
                   <LinkButton
@@ -68,6 +73,7 @@ export default async function AdminAlliancesPage() {
                     slug={a.slug}
                     name={a.name}
                     agentCount={a._count.agents}
+                    locale={locale}
                   />
                 </div>
               </div>
@@ -80,19 +86,19 @@ export default async function AdminAlliancesPage() {
 
       <div className="flex gap-2">
         <LinkButton variant="primary" href="/admin/alliances/new">
-          [ &gt; + NEW ALLIANCE ]
+          {t("alliancesNew")}
         </LinkButton>
       </div>
     </div>
   );
 }
 
-function AccessDenied() {
+function AccessDenied({ t }: { t: ReturnType<typeof getTranslator> }) {
   return (
-    <Section title="ACCESS DENIED">
-      <PromptLine>! 当前会话不是管理员账户</PromptLine>
+    <Section title={t("accessDenied")}>
+      <PromptLine>{t("accessDeniedBody")}</PromptLine>
       <PromptLine>
-        &gt; <Link href="/admin" className="underline">[ &gt; BACK TO LOGIN ]</Link>
+        &gt; <Link href="/admin" className="underline">{t("accessDeniedBack")}</Link>
       </PromptLine>
     </Section>
   );

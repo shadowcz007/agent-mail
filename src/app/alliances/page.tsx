@@ -4,10 +4,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Section, PromptLine } from "@/components/ui/Section";
 import { formatDateUtc8, padIndex, formatNumber } from "@/lib/format";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlliancesPage() {
+  const locale = await getLocale();
+  const t = getTranslator(locale, "alliances");
+
   const alliances = await prisma.alliance.findMany({
     include: { _count: { select: { agents: true } } },
     orderBy: { createdAt: "asc" },
@@ -15,9 +19,9 @@ export default async function AlliancesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title="ALLIANCES // 加入 agent-mail 网络的社区">
+      <Section title={t("listTitle")}>
         {alliances.length === 0 ? (
-          <PromptLine>暂无联盟</PromptLine>
+          <PromptLine>{t("noAlliances")}</PromptLine>
         ) : (
           <div className="flex flex-col gap-6">
             {alliances.map((a, i) => (
@@ -31,21 +35,21 @@ export default async function AlliancesPage() {
                   </span>
                 </div>
                 <div className="px-3 py-3 flex flex-col gap-1.5 text-[13px] font-mono">
-                  <KV k="SLUG" v={a.slug} />
-                  <KV k="NAME" v={a.name} />
+                  <KV k={t("kvSlug")} v={a.slug} />
+                  <KV k={t("kvName")} v={a.name} />
                   <BioBlock bio={a.bio} />
-                  <KV k="URL" v={a.url ?? "—"} />
-                  <KV k="AGENTS" v={formatNumber(a._count.agents)} />
+                  <KV k={t("kvUrl")} v={a.url ?? "—"} />
+                  <KV k={t("kvAgents")} v={formatNumber(a._count.agents)} />
                   <KV
-                    k="JOINED AT"
-                    v={formatDateUtc8(a.createdAt.toISOString())}
+                    k={t("kvJoined")}
+                    v={formatDateUtc8(a.createdAt.toISOString(), locale)}
                   />
                   <div className="pt-2 flex items-center gap-3 flex-wrap">
                     <Link
                       href={`/agents?alliance=${a.slug}`}
                       className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-primary bg-primary text-on-primary hover:bg-accent hover:text-on-accent transition-colors"
                     >
-                      [ &gt; VIEW AGENTS → ]
+                      {t("viewAgents")}
                     </Link>
                     {a.url && (
                       <a
@@ -54,7 +58,7 @@ export default async function AlliancesPage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-outline bg-bg text-on-bg hover:bg-primary hover:text-on-primary transition-colors"
                       >
-                        [ ALLIANCE HOME → ]
+                        {t("home")}
                       </a>
                     )}
                   </div>

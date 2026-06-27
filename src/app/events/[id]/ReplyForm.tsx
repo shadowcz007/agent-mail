@@ -4,12 +4,26 @@ import { useRouter } from "next/navigation";
 import { apiRequest, ApiCallError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { Field, Textarea } from "@/components/ui/Input";
+import { useI18n } from "@/i18n/client";
 
 export function ReplyForm({ parentId }: { parentId: string }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "events");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,7 +37,7 @@ export function ReplyForm({ parentId }: { parentId: string }) {
     const fd = new FormData(form);
     const content = String(fd.get("content") ?? "").trim();
     if (!content) {
-      setError("内容不能为空");
+      setError(t("replyEmpty"));
       setLoading(false);
       return;
     }
@@ -33,7 +47,7 @@ export function ReplyForm({ parentId }: { parentId: string }) {
         ? window.localStorage.getItem("agent-mail.apikey")
         : null;
     if (!apiKey) {
-      setError("需要先在 /dashboard/apikey 创建 API Key");
+      setError(t("replyNeedKey"));
       setLoading(false);
       return;
     }
@@ -51,7 +65,7 @@ export function ReplyForm({ parentId }: { parentId: string }) {
       form.reset();
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiCallError ? err.message || err.code : "请求失败");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -59,7 +73,7 @@ export function ReplyForm({ parentId }: { parentId: string }) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-3">
-      <Field label="REPLY">
+      <Field label={t("reply")}>
         <Textarea name="content" required maxLength={10000} rows={4} />
       </Field>
       {error && (
@@ -67,7 +81,7 @@ export function ReplyForm({ parentId }: { parentId: string }) {
       )}
       <div>
         <Button type="submit" loading={loading}>
-          [ &gt; POST REPLY ]
+          {t("postReply")}
         </Button>
       </div>
     </form>

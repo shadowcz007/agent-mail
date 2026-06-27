@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { formatDateTimeUtc8, timeLeft, truncate, formatNumber } from "@/lib/format";
 import { ResetRowActions } from "./row-actions";
 import type { ResetStatus } from "@/lib/types";
+import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,11 @@ interface PageProps {
 
 export default async function ResetRequestsPage({ searchParams }: PageProps) {
   const user = await getCurrentUser();
-  if (!user || !user.isAdmin) return <AccessDenied />;
+
+  const locale = await getLocale();
+  const t = getTranslator(locale, "admin");
+
+  if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
   const sp = await searchParams;
   const status = (sp.status as ResetStatus) ?? "pending";
@@ -46,30 +51,30 @@ export default async function ResetRequestsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <H1>RESET REQUESTS</H1>
+      <H1>{t("resetRequestsTitle")}</H1>
 
       <Section
-        title={`PASSWORD RESET REQUESTS // ${status.toUpperCase()} (${formatNumber(requests.length)})`}
+        title={t("resetRequestsSubtitle", { status: status.toUpperCase(), n: formatNumber(requests.length) })}
       >
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">FILTER :</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-dim">{t("filterLabel")}</span>
             <LinkButton variant={status === "pending" ? "primary" : "secondary"} href="?status=pending">
-              [ PENDING ({formatNumber(pendingN)}) ]
+              {t("filterPending", { n: formatNumber(pendingN) })}
             </LinkButton>
             <LinkButton variant={status === "resolved" ? "primary" : "secondary"} href="?status=resolved">
-              [ RESOLVED ({formatNumber(resolvedN)}) ]
+              {t("filterResolved", { n: formatNumber(resolvedN) })}
             </LinkButton>
             <LinkButton variant={status === "used" ? "primary" : "secondary"} href="?status=used">
-              [ USED ({formatNumber(usedN)}) ]
+              {t("filterUsed", { n: formatNumber(usedN) })}
             </LinkButton>
             <LinkButton variant={status === "all" ? "primary" : "secondary"} href="?status=all">
-              [ ALL ({formatNumber(allN)}) ]
+              {t("filterAll", { n: formatNumber(allN) })}
             </LinkButton>
           </div>
 
           {requests.length === 0 ? (
-            <PromptLine>该状态下暂无重置请求。</PromptLine>
+            <PromptLine>{t("noRequestsThisStatus")}</PromptLine>
           ) : (
             <div className="border border-outline">
               {requests.map((r, i) => {
@@ -79,12 +84,12 @@ export default async function ResetRequestsPage({ searchParams }: PageProps) {
                     ? "muted"
                     : "default";
                 const label = !r.resolvedAt && !r.usedAt
-                  ? "PENDING"
+                  ? t("statusPending")
                   : r.usedAt
-                    ? "USED"
-                    : "RESOLVED";
+                    ? t("statusUsed")
+                    : t("statusResolved");
                 const expired = new Date(r.expiresAt).getTime() < Date.now();
-                const left = expired ? "EXPIRED" : timeLeft(r.expiresAt.toISOString());
+                const left = expired ? t("statusExpired") : timeLeft(r.expiresAt.toISOString());
                 return (
                   <div
                     key={r.id}
@@ -100,24 +105,24 @@ export default async function ResetRequestsPage({ searchParams }: PageProps) {
                       <StatusChip tone={tone}>{label}</StatusChip>
                     </div>
                     <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
-                      <div><span className="text-dim">TOKEN</span> : {truncate(r.token, 30)}</div>
-                      <div><span className="text-dim">REQUESTED</span> : {formatDateTimeUtc8(r.createdAt.toISOString())}</div>
+                      <div><span className="text-dim">{t("colToken")}</span> : {truncate(r.token, 30)}</div>
+                      <div><span className="text-dim">{t("colRequested")}</span> : {formatDateTimeUtc8(r.createdAt.toISOString(), locale)}</div>
                       {!r.usedAt && !r.resolvedAt && (
                         <>
-                          <div><span className="text-dim">EXPIRES</span> : {formatDateTimeUtc8(r.expiresAt.toISOString())}</div>
+                          <div><span className="text-dim">{t("colExpires")}</span> : {formatDateTimeUtc8(r.expiresAt.toISOString(), locale)}</div>
                           <div>
-                            <span className="text-dim">LEFT</span> : <StatusChip tone={expired ? "error" : "accent"}>{left}</StatusChip>
+                            <span className="text-dim">{t("colLeft")}</span> : <StatusChip tone={expired ? "error" : "accent"}>{left}</StatusChip>
                           </div>
                         </>
                       )}
                       {r.resolvedAt && (
                         <>
-                          <div><span className="text-dim">RESOLVED BY</span> : {user.email}</div>
-                          <div><span className="text-dim">RESOLVED AT</span> : {formatDateTimeUtc8(r.resolvedAt.toISOString())}</div>
+                          <div><span className="text-dim">{t("colResolvedBy")}</span> : {user.email}</div>
+                          <div><span className="text-dim">{t("colResolvedAt")}</span> : {formatDateTimeUtc8(r.resolvedAt.toISOString(), locale)}</div>
                         </>
                       )}
                       {r.usedAt && (
-                        <div><span className="text-dim">USED AT</span> : {formatDateTimeUtc8(r.usedAt.toISOString())}</div>
+                        <div><span className="text-dim">{t("colUsedAt")}</span> : {formatDateTimeUtc8(r.usedAt.toISOString(), locale)}</div>
                       )}
                     </div>
                     <div className="mt-2 pl-11 flex flex-wrap gap-2">
@@ -135,17 +140,17 @@ export default async function ResetRequestsPage({ searchParams }: PageProps) {
 
       <Divider />
 
-      <PromptLine><StatusChip tone="warning">WARNING</StatusChip> 未 RESOLVED 的请求会在 24h 后自动作废。</PromptLine>
+      <PromptLine><StatusChip tone="warning">WARNING</StatusChip> {t("copyWarn")}</PromptLine>
     </div>
   );
 }
 
-function AccessDenied() {
+function AccessDenied({ t }: { t: ReturnType<typeof getTranslator> }) {
   return (
-    <Section title="ACCESS DENIED">
-      <PromptLine>! 当前会话不是管理员账户</PromptLine>
+    <Section title={t("accessDenied")}>
+      <PromptLine>{t("accessDeniedBody")}</PromptLine>
       <PromptLine>
-        &gt; <Link href="/admin" className="underline">[ &gt; BACK TO LOGIN ]</Link>
+        &gt; <Link href="/admin" className="underline">{t("accessDeniedBack")}</Link>
       </PromptLine>
     </Section>
   );

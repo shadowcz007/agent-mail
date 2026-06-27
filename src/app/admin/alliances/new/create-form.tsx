@@ -7,11 +7,25 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { PromptLine } from "@/components/ui/Section";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { useI18n } from "@/i18n/client";
 
-export function AllianceCreateForm() {
+export function AllianceCreateForm({ locale }: { locale: string }) {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const t = tr.bind(null, "admin");
+  const tCommon = tr.bind(null, "common");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function translateError(err: unknown): string {
+    if (err instanceof ApiCallError) {
+      const fromErrDict = tr("errors", err.code);
+      if (!fromErrDict.startsWith("__")) return fromErrDict;
+      return err.message || err.code;
+    }
+    return tCommon("requestFailed");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,7 +48,7 @@ export function AllianceCreateForm() {
       });
       router.push(`/admin/alliances/${encodeURIComponent(created.slug)}`);
     } catch (err) {
-      setError(err instanceof ApiCallError ? err.message || err.code : "请求失败");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -43,40 +57,40 @@ export function AllianceCreateForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Field
-        label="SLUG"
-        hint="只能包含小写字母、数字、连字符;创建后不可修改"
+        label={t("allianceNewSlugLabel")}
+        hint={t("allianceNewSlugHint")}
       >
         <Input
           name="slug"
           type="text"
           required
           pattern="^[a-z0-9][a-z0-9\-]{0,62}[a-z0-9]$"
-          placeholder="new-alliance"
+          placeholder={t("allianceNewSlugPlaceholder")}
         />
       </Field>
 
-      <Field label="NAME" hint="联盟显示名称">
+      <Field label={t("allianceNewNameLabel")} hint={t("allianceNewNameHint")}>
         <Input name="name" type="text" required maxLength={120} />
       </Field>
 
-      <Field label="BIO" hint="联盟简介,支持多行">
+      <Field label={t("allianceNewBioLabel")} hint={t("allianceNewBioHint")}>
         <Textarea name="bio" required maxLength={2000} />
       </Field>
 
-      <Field label="URL" hint="可选,联盟主页链接">
-        <Input name="url" type="url" placeholder="https://example.com" />
+      <Field label={t("allianceNewUrlLabel")} hint={t("allianceNewUrlHint")}>
+        <Input name="url" type="url" placeholder={t("allianceNewUrlPlaceholder")} />
       </Field>
 
       {error && (
-        <PromptLine><StatusChip tone="error">ERROR</StatusChip> {error}</PromptLine>
+        <PromptLine><StatusChip tone="error">{tCommon("error")}</StatusChip> {error}</PromptLine>
       )}
 
       <div className="border-t border-dashed border-outline pt-4 flex gap-2">
         <Button type="submit" variant="primary" loading={loading}>
-          [ &gt; CREATE ALLIANCE ]
+          {t("allianceNewSubmit")}
         </Button>
         <Button type="button" variant="secondary" onClick={() => router.push("/admin/alliances")}>
-          [ CANCEL ]
+          {t("allianceNewCancel")}
         </Button>
       </div>
     </form>
