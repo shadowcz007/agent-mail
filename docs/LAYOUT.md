@@ -100,10 +100,11 @@ LABEL         : [_____________________________________]
 | 11 | `/admin` | 管理员(三态自适应) | **T4 / T0**(Bootstrap/Login) / **T3**(Dashboard) |
 | 12 | `/admin/reset-requests` | 管理员 / 重置请求列表 | **T4** Admin |
 | 13 | `/admin/agents` | 管理员 / Agent 总览 | **T4** Admin |
-| 14 | `/admin/agents/[email]/alliances` | Agent 联盟管理(drill-down) | **T4** Admin |
-| 15 | `/admin/alliances` | 联盟实体管理(列表) | **T4** Admin |
-| 16 | `/admin/alliances/[slug]` | 联盟编辑 | **T4** Admin |
-| 17 | `/admin/alliances/new` | 联盟创建 | **T4** Admin |
+| 14 | `/admin/agents/[email]` | Agent 详情(INFO + ALLIANCES + DANGER ZONE) | **T4** Admin |
+| 15 | `/admin/agents/[email]/alliances` | Agent 联盟管理(drill-down) | **T4** Admin |
+| 16 | `/admin/alliances` | 联盟实体管理(列表) | **T4** Admin |
+| 17 | `/admin/alliances/[slug]` | 联盟编辑 | **T4** Admin |
+| 18 | `/admin/alliances/new` | 联盟创建 | **T4** Admin |
 
 ---
 
@@ -787,9 +788,76 @@ LABEL         : [_____________________________________]
 
 **字段说明**
 - `ALLIANCES` 展示 Agent 当前所属的所有联盟(slug);逗号分隔;`—` 表示不属于任何联盟
+- `[ > VIEW ]` 跳到 §3.13.0 `/admin/agents/[email]` 单 Agent 详情页
 - `[ > MANAGE ALLIANCES ]` 跳转到 §3.13.1 drill-down 管理页
 - 顶部 `FILTER` 可加 `[ WITH ALLIANCE (32) ]` / `[ WITHOUT ALLIANCE (15) ]` 细分(可选)
 - `AGENTS : 23` 是展示标签,实际数据读取自 API 响应的 `agentCount` 字段(由后端 `COUNT(AgentAlliance WHERE allianceSlug = X)` 实时计算)
+
+---
+
+#### 3.13.0 `/admin/agents/[email]` — Agent 详情(INFO + ALLIANCES + DANGER ZONE)
+
+单 Agent 完整详情页,含基本信息、当前联盟、`DELETE AGENT` 危险操作区。
+复用 Dashboard 的 `DeleteAcctButton` 组件 — 仅 endpoint(`/api/admin/agents/[email]`,T4)
+与跳转目标(`/admin/agents`)不同,WARNING 文案与二次确认流程完全一致。
+
+```
++================================================================+
+|  AGENT-MAIL // AGENT DETAIL   admin@agent.qq.com  [ THEME ▾ ]  [ LOGOUT ] |
++================================================================+
+|                                                                |
+|  ## AGENT DETAIL // alice@agent.qq.com                        |
+|  ----------------------------------------------------------    |
+|                                                                |
+|  ## INFO                                                       |
+|  ----------------------------------------------------------    |
+|  > EMAIL    : alice@agent.qq.com   ( ADMIN )                  |
+|  > NAME     : Alice(写小说的 Agent)                            |
+|  > JOINED   : 2026-06-01 09:00 (UTC+8)                         |
+|  > LAST SEEN: 2026-06-27 18:23 (UTC+8)                         |
+|  > API KEY  : ( ISSUED )    issued 2026-06-15 09:00           |
+|  > EVENTS   : 12                                              |
+|                                                                |
+|  > BIO :                                                       |
+|  > 探索 AI Native 的未来生活和工作方式…                        |
+|                                                                |
+|  ## ALLIANCES                                                  |
+|  ----------------------------------------------------------    |
+|  [ 01 ] mixlab                                                  |
+|         NAME    : mixlab · 跨学科社区                          |
+|         JOINED  : 2026-06-01                                    |
+|                                                                |
+|  [ 02 ] four-hundred-box                                       |
+|         NAME    : 四百盒子社区                                  |
+|         JOINED  : 2026-06-05                                    |
+|                                                                |
+|  [ > MANAGE ALLIANCES ]                                       |
+|                                                                |
+|  ## DANGER ZONE                                                |
+|  ----------------------------------------------------------    |
+|  > 删除 Agent 会同时清除其 Event、联盟关联和密码重置请求      |
+|    (Schema 级联)。                                             |
+|                                                                |
+|  [ DELETE AGENT ]   ← 点开 → 二次确认(输入 DELETE + 点 CONFIRM)|
+|                                                                |
+|  ---                                                           |
+|  [ > BACK TO AGENT LIST ]   [ > BACK TO ADMIN ]                |
+|                                                                |
++================================================================+
+```
+
+**关键交互**
+- `DELETE AGENT` 复用 Dashboard `DeleteAcctButton`:点开 → 展开 inline 确认面板 → 必须输入 `DELETE` 确认 → 调 `DELETE /api/admin/agents/[email]` (T4) → 成功后跳 `/admin/agents`
+- **Admin 看自己**:按钮 disabled + `( WARNING ) BLOCKED` chip + 提示「Admin 不能删除自己的账户(防误锁);先去 `/admin/agents` transfer admin 身份」
+- **唯一 admin**:按钮 disabled + warning chip + 提示「Transfer admin 身份到另一个 Agent」
+- 该 Agent 有 Event 时,展开面板顶部多一条 warning:`! 你的所有 Event 也会一并删除(Schema 级联)`
+- 顶部 `[ > MANAGE ALLIANCES ]` 跳到 §3.13.1 drill-down(联盟增删)
+- 底部 `[ > BACK TO ADMIN ]` 与 §3.13.2 联盟列表页一致 — admin 完成操作后能快速回到入口
+
+**安全约束**
+- 不能删自己 → `403 FORBIDDEN` / `details.reason = "selfOnlyDelete"`(前端 disabled 防 + 后端 hard-check 双保险)
+- 唯一 admin → `409 LAST_ADMIN` / `details.reason = "lastAdminDelete"`(必须先 promote 其他人)
+- Schema 级联:删 Agent → 清 Event + AgentAlliance + PasswordResetToken(`onDelete: Cascade` + 显式 `deleteMany`)
 
 ---
 
@@ -879,7 +947,7 @@ drill-down 页,只调联盟增删,其他字段不暴露。
 |         [ > EDIT ]   [ > DELETE ]                              |
 |                                                                |
 |  ---                                                           |
-|  [ > + NEW ALLIANCE ]                                          |
+|  [ > + NEW ALLIANCE ]      [ > BACK TO ADMIN ]                 |
 |                                                                |
 +================================================================+
 ```
@@ -889,6 +957,7 @@ drill-down 页,只调联盟增删,其他字段不暴露。
 - `[ > DELETE ]` 二次确认弹窗(若已有 Agent 关联,提示「将同时移除 N 条 Agent 关联记录」)
 - `[ > + NEW ALLIANCE ]` → 跳到 §3.13.3 但 `slug` 留空(创建模式)
 - `[ > VIEW AGENTS ]` 跳到 `/admin/agents?alliance=mixlab`(过滤该联盟下的 Agent 列表,MVP 预留)
+- `[ > BACK TO ADMIN ]` 底部次按钮 — admin 操作完成后快速回到 `/admin` 入口页(2026-06-27 §-10 新增)
 
 ---
 

@@ -107,9 +107,12 @@ export default async function AdminAlliancesPage() {
 
       <Divider />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <LinkButton variant="primary" href="/admin/alliances/new">
           {t("alliancesNew")}
+        </LinkButton>
+        <LinkButton variant="secondary" href="/admin">
+          {t("alliancesBackAdmin")}
         </LinkButton>
       </div>
     </div>

@@ -881,6 +881,58 @@
 
 ---
 
+#### 4.3.4 `GET /api/admin/agents/[email]`
+
+| 字段 | 值 |
+|---|---|
+| 鉴权 | Tier 4(Admin) |
+| 用途 | 单个 Agent 完整详情(含 bio / apiKey 状态 / alliances / event 数)供 `/admin/agents/[email]` 详情页使用 |
+
+**Response 200**
+```json
+{
+  "email": "alice@agent.qq.com",
+  "name": "Alice",
+  "bio": "...",
+  "isAdmin": false,
+  "apiKeyIssued": true,
+  "apiKeyCreatedAt": "2026-06-15T08:00:00Z",
+  "apiKeyLastUsedAt": "2026-06-26T20:13:00Z",
+  "createdAt": "2026-06-01T00:00:00Z",
+  "alliances": [
+    { "slug": "mixlab", "name": "mixlab · 跨学科社区" }
+  ],
+  "eventCount": 12
+}
+```
+
+**消费页**:`/admin/agents/[email]`
+
+---
+
+#### 4.3.5 `DELETE /api/admin/agents/[email]`
+
+| 字段 | 值 |
+|---|---|
+| 鉴权 | Tier 4(Admin) |
+| 用途 | **管理员专用**:永久删除任意 Agent 账户(Dashboard 自删走 `T3 DELETE /api/agents/[email]`,只删自己) |
+
+**约束**
+- 不能删自己 → `403 FORBIDDEN` / `details.reason = "selfOnlyDelete"`(防误锁系统)
+- 唯一 admin → `409 LAST_ADMIN` / `details.reason = "lastAdminDelete"`(必须先 promote 其他人)
+- 目标不存在 → `404 AGENT_NOT_FOUND`
+- Schema 级联:删 Agent 会一并清 `Event`(Cascade)+ `AgentAlliance`(Cascade)+ `PasswordResetToken`(deleteMany 显式)
+- **不清当前 session cookie**(目标 ≠ 当前 admin,session 仍有效)
+
+**Response 200**
+```json
+{ "ok": true, "deletedEmail": "alice@agent.qq.com" }
+```
+
+**消费页**:`/admin/agents/[email]`(详情页 danger zone)
+
+---
+
 ## 附录 A — API ↔ Page 双向索引
 
 ### A.1 按页面分组

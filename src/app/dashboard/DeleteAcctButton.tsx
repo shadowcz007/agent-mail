@@ -14,9 +14,24 @@ interface Props {
   email: string;
   isLastAdmin: boolean;
   hasEvents: boolean;
+  /**
+   * DELETE 端点路径:
+   * - Dashboard 默认 `/api/agents/[email]` (T3,仅删自己,后端 303 跳 /)
+   * - Admin 详情页传 `/api/admin/agents/[email]` (T4,删任意,后端 200 JSON,
+   *   客户端调成功后 router.refresh() 即可)
+   */
+  endpoint?: string;
+  /** DELETE 成功后跳转目标;默认 "/" 用于 Dashboard;Admin 详情页传 "/admin/agents" */
+  redirectAfter?: string;
 }
 
-export function DeleteAcctButton({ email, isLastAdmin, hasEvents }: Props) {
+export function DeleteAcctButton({
+  email,
+  isLastAdmin,
+  hasEvents,
+  endpoint = `/api/agents/${encodeURIComponent(email)}`,
+  redirectAfter = "/",
+}: Props) {
   const { t: tr } = useI18n();
   const t = tr.bind(null, "dashboard");
   const tCommon = tr.bind(null, "common");
@@ -39,16 +54,16 @@ export function DeleteAcctButton({ email, isLastAdmin, hasEvents }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/agents/${encodeURIComponent(email)}`, {
+      const res = await fetch(endpoint, {
         method: "DELETE",
       });
-      // 后端 303 重定向到 /。浏览器会自动跟跳,我们的页面会被卸载。
+      // T3 自删端点返回 303;浏览器自动跟跳,我们的页面会被卸载。
       if (res.redirected) {
         window.location.href = res.url;
         return;
       }
       if (res.ok) {
-        window.location.href = "/";
+        window.location.href = redirectAfter;
         return;
       }
       const data = await res.json().catch(() => ({}));

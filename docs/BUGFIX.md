@@ -5,7 +5,7 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — 装饰符合规清理:全项目 ⚠ / ✓ / ⚠️ / ★ emoji 替换为 SPEC §3.8.1 装饰符家族(`( WARNING )` / `[ DONE ]` / `!!!`),共 14 处(UI 8 + Agent.md 模板 2 + 开发者注释 4);同步移除 `/admin/alliances/[slug]` 编辑页 `// META // 不可编辑` Section(3 项元信息与列表页完全重复)(详见 §-9)。
+> **最近更新**:2026-06-27 — Admin 详情页 + 删除 Agent:`/admin/agents/[email]` 新详情页(INFO + ALLIANCES + DANGER ZONE),复用 Dashboard `DeleteAcctButton` 组件,仅 endpoint + 跳转目标不同;新增 T4 端点 `DELETE /api/admin/agents/[email]`(不能删自己 + 唯一 admin 保护);`/admin/alliances` 底部加 `[ > BACK TO ADMIN ]` 入口(详见 §-10)。
 
 ---
 
@@ -628,6 +628,194 @@ npx tsc --noEmit
 # 3. form 用 key 仍在
 grep -E "allianceReadOnly|allianceSlugLabel|allianceEditSlugHint" src/i18n/messages/zh-CN.ts src/i18n/messages/en.ts
 ```
+
+---
+
+## -10. Admin 详情页 + 删除任意 Agent + 返回 admin 入口
+
+**时间**:2026-06-27
+
+### 症状
+
+admin 在两个工作流上缺关键能力:
+
+1. **`/admin/agents` 列表的 `[ > VIEW ]` 按钮跳到了 `/agents/[email]` 公开页**(普通 user 视角)。
+   看不到 admin 才关心的字段(isAdmin / apiKey 状态 / event 数 / 完整 bio),
+   也不能直接删除该 Agent。
+2. **`/admin/alliances` 列表操作完联盟后,需手动改 URL 回 `/admin`** 才能进入其他模块,
+   缺一个明显的"返回 admin 入口"按钮。`/admin/agents/[email]/alliances` 已有 `[ > BACK TO AGENT LIST ]`,
+   但 admin 总枢纽(联盟侧)没有等价入口。
+
+### 根因
+
+- `/admin/agents/[email]/alliances` 已经在,但上层 `/admin/agents/[email]` 详情页**根本没实现**
+  (只有 `[email]/alliances` 子目录)。
+- `/admin/alliances` 列表页底部只有 `[ > + NEW ALLIANCE ]` 一个动作,**没有"返回 admin"次按钮**。
+- `DELETE /api/agents/[email]` (T3) 只能删自己,**admin 想删任意 Agent 没有对应端点** —
+  即使前端有按钮也会被 `403 FORBIDDEN selfOnlyDelete` 截胡。
+
+### 修复
+
+#### A. 新建 T4 DELETE 端点 `DELETE /api/admin/agents/[email]`
+
+`src/app/api/admin/agents/[email]/route.ts` 新建,镜像 `/api/agents/[email]` DELETE 的事务
+(`deleteMany(PasswordResetToken)` + `agent.delete`),但:
+
+| 约束 | T3 自删 | T4 admin 删 |
+|---|---|---|
+| selfOnly | **必须** (`email !== auth.user.email → 403`) | **反向禁止** (`email === auth.user.email → 403` 防误锁) |
+| 唯一 admin | `409 LAST_ADMIN lastAdminDelete` | 同 |
+| 清 session cookie | 是(自己删,登出) | 否(目标 ≠ 当前 admin) |
+| 响应 | `303 redirect /` | `200 { ok, deletedEmail }` |
+
+Schema 级联:`onDelete: Cascade` 清 `Event` + `AgentAlliance`,外加显式
+`prisma.passwordResetToken.deleteMany` 清重置请求。
+
+#### B. `DeleteAcctButton` 加 2 个 prop,保留 dashboard 默认行为
+
+```tsx
+interface Props {
+  email: string;
+  isLastAdmin: boolean;
+  hasEvents: boolean;
+  /** DELETE 端点路径 - 默认 /api/agents/[email] (T3) */
+  endpoint?: string;
+  /** 成功后跳转 - 默认 "/" */
+  redirectAfter?: string;
+}
+```
+
+admin 详情页包一个轻量 `AdminDeleteAgentButton` 客户端组件,只设两个 prop:
+
+```tsx
+<DeleteAcctButton
+  email={email}
+  isLastAdmin={isLastAdmin}
+  hasEvents={hasEvents}
+  endpoint={`/api/admin/agents/${encodeURIComponent(email)}`}
+  redirectAfter="/admin/agents"
+/>
+```
+
+WARNING 文案、二次确认流程、`DELETE` 输入框、loading / error 状态全部复用,
+**单一来源**(dashboard 字典)→ 跨页面体验完全一致。
+
+#### C. 新建 `/admin/agents/[email]/page.tsx` 详情页
+
+3 个 Section:
+
+1. `## INFO` — EMAIL + (SELF) / (ADMIN) chip + NAME + JOINED + LAST SEEN + API KEY (issued 时间) + EVENTS 计数 + BIO 全文
+2. `## ALLIANCES` — 该 Agent 当前联盟列表(只读,带 `[ > MANAGE ALLIANCES ]` 跳 §3.13.1)+ 空态提示「该 Agent 暂不属于任何联盟」
+3. `## DANGER ZONE` — `( WARNING )` 级联警告 + `DELETE AGENT` 按钮(自己 disabled + 唯一 admin disabled)
+
+底部:`[ > BACK TO AGENT LIST ]` + `[ > BACK TO ADMIN ]` 双出口。
+
+#### D. `/admin/agents` 列表的 `[ > VIEW ]` 跳详情页
+
+`src/app/admin/agents/page.tsx`:
+
+```diff
+- <LinkButton href={`/agents/${a.email}`}>{t("colView")}</LinkButton>
++ <LinkButton href={`/admin/agents/${encodeURIComponent(a.email)}`}>
++   {t("colView")}
++ </LinkButton>
+```
+
+#### E. `/admin/alliances` 底部加 `[ > BACK TO ADMIN ]`
+
+`src/app/admin/alliances/page.tsx`:
+
+```diff
+- <div className="flex gap-2">
++ <div className="flex gap-2 flex-wrap">
+    <LinkButton variant="primary" href="/admin/alliances/new">
+      {t("alliancesNew")}
+    </LinkButton>
++   <LinkButton variant="secondary" href="/admin">
++     {t("alliancesBackAdmin")}
++   </LinkButton>
+  </div>
+```
+
+i18n 加 1 个 key:`admin.alliancesBackAdmin` = `"[ > 返回 admin ]"` / `"[ > BACK TO ADMIN ]"`。
+**复用**`accessDeniedBack` 已有的 `/admin` 跳转语义。
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/app/api/admin/agents/[email]/route.ts` | **新建** — T4 GET + DELETE |
+| `src/app/dashboard/DeleteAcctButton.tsx` | 加 `endpoint` / `redirectAfter` 2 个 prop(默认原行为不变) |
+| `src/app/admin/agents/[email]/AdminDeleteAgentButton.tsx` | **新建** — 包装 DeleteAcctButton,传 admin endpoint |
+| `src/app/admin/agents/[email]/page.tsx` | **新建** — 详情页(INFO + ALLIANCES + DANGER ZONE) |
+| `src/app/admin/agents/page.tsx` | `[ > VIEW ]` href 改到 `/admin/agents/[email]` |
+| `src/app/admin/alliances/page.tsx` | 底部加 `[ > BACK TO ADMIN ]` 次按钮 |
+| `src/i18n/messages/zh-CN.ts` | +10 keys(`agentDetailTitle` × 2 + section × 3 + danger × 2 + backToAdminAgents` + `alliancesBackAdmin` + `agentKvBio`) |
+| `src/i18n/messages/en.ts` | +10 keys(同上,en 文案) |
+| `docs/SPEC.md` | §3.5 路由表加 `/admin/agents/[email]`;§3.5 核心 API 表加 4.3.4 GET + 4.3.5 DELETE |
+| `docs/LAYOUT.md` | §2 路由表加 #14(原 14-17 顺延);§3.13.0 新增详情页 ASCII + 关键交互;§3.13.2 草图加 `[ > BACK TO ADMIN ]` |
+| `docs/API.md` | 新增 §4.3.4 GET + §4.3.5 DELETE(含响应 schema + 消费页 + 约束);§A.1 索引表加新页 |
+| `docs/BUGFIX.md` | 顶部最近更新 + 本节(§-10)+ 修复统计表 + Git 提交表 |
+
+### 验证
+
+```bash
+# 1. tsc(默认 props 完全向后兼容)
+npx tsc --noEmit
+# 期望: exit=0
+
+# 2. 新 i18n key 完整性
+grep -cE "agentDetailTitle|agentInfoSectionTitle|agentAllianceSectionTitle|agentDangerZoneTitle|agentDangerZoneHint|agentDangerZoneSelfBlockHint|agentDeleteAgentButton|alliancesBackAdmin|agentKvBio" \
+  src/i18n/messages/zh-CN.ts src/i18n/messages/en.ts
+# 期望: 18(9 keys × 2 langs)
+
+# 3. T4 DELETE 端点 + 路由存在
+ls src/app/api/admin/agents/\[email\]/route.ts
+ls src/app/admin/agents/\[email\]/page.tsx
+ls src/app/admin/agents/\[email\]/AdminDeleteAgentButton.tsx
+
+# 4. 手测场景
+# a) admin 登录 → /admin/agents → 点 [ > VIEW ] → 落到详情页(/admin/agents/[email])
+#    应看到 3 个 Section(INFO + ALLIANCES + DANGER ZONE),底部 2 个返回按钮
+# b) 自己看自己 → DELETE 按钮 disabled + ( WARNING ) BLOCKED + 提示 transfer admin
+# c) 看其他 admin(非唯一) → 点 [ DELETE AGENT ] → 输入 DELETE → 确认 → 跳 /admin/agents → 该 Agent 从列表消失
+# d) 看唯一 admin → DELETE 按钮 disabled + ( WARNING ) BLOCKED + 提示 transfer admin
+# e) 切到 en locale → 所有 UI 字符串英文;装饰符 ( SELF ) / ( WARNING ) / ( ADMIN ) 跨语言一致
+# f) /admin/alliances → 底部 2 个按钮([ > + NEW ALLIANCE ] + [ > BACK TO ADMIN ])
+# g) curl DELETE 测试:
+#    curl -s -X DELETE -b "agent-mail.session=<admin_jwt>" \
+#      http://localhost:3000/api/admin/agents/<other>@agent.qq.com | jq
+#    期望: { "ok": true, "deletedEmail": "..." }
+# h) curl DELETE self:
+#    期望: 403 FORBIDDEN selfOnlyDelete
+# i) curl DELETE 唯一 admin:
+#    期望: 409 LAST_ADMIN lastAdminDelete
+```
+
+### 设计决策
+
+| # | 决策 | 选择 | 理由 |
+|---|---|---|---|
+| D1 | 删除端点位置 | **新建 T4 `/api/admin/agents/[email]`** | T3 端点强约束 selfOnly 不适合 admin 复用;独立端点鉴权 + 约束清晰 |
+| D2 | DeleteAcctButton 是否拆分 | **不拆,加 2 个 prop** | WARNING 流程 / 二次确认 / 输入 DELETE 是产品级一致性;复制粘贴新组件会导致文案漂移 |
+| D3 | 详情页是否拆 drill-down | **单页 3 个 Section** | admin 总览页已经够长,详情页不需要再 drill;**MANAGE ALLIANCES** 按钮跳 §3.13.1 联盟 drill-down |
+| D4 | 自己能否删自己 | **不能** | 防止 admin 误锁系统(系统中无 admin → 永久锁死,只能 DB 介入);后端 hard-check + 前端 disabled 双保险 |
+| D5 | 唯一 admin 能否被他人删 | **不能** | 同 demote 逻辑;必须先 promote 其他人,转移 admin 身份 |
+| D6 | 删任意 Agent 后 session | **保留** | 目标 ≠ 当前 admin,无需 clearSession;前端 `redirectAfter="/admin/agents"` 跳回列表 |
+| D7 | 详情页 schema 字段 | **8 个** (email/name/bio/isAdmin/apiKey×3 字段/createdAt/alliances + eventCount) | 满足 admin 决策需求;不暴露 passwordHash(SPEC §3.7.1) |
+| D8 | `agentKvBio` key 命名 | **admin.agentKvBio** | 同 namespace 已有 `agentKvEmail/Name/Joined`,保持命名一致;en/zh 都加 |
+| D9 | alliancesBackAdmin 位置 | **admin namespace 而非 common** | 仅 admin 页面使用;common.backToHome 留给登录前 |
+| D10 | 装饰符 | `( SELF )` / `( ADMIN )` / `( WARNING )` 跨语言一致 | SPEC §3.8.1 装饰符家族 |
+
+### 风险与已知限制
+
+1. **Schema 级联不可逆**:删 Agent 会一并清 Event / Alliance 关联 / 重置请求;
+   UI 已通过 `hasEvents` 提示 + 输入 `DELETE` 双重确认缓解。
+2. **CASCADE 索引性能**:Schema 级联删除 N 条 Event 在小库(<10K)瞬间完成;若未来 Agent Event 量到百万级需评估。
+3. **自己无法恢复**:若 admin 把所有 admin 误 transfer 完导致系统无 admin,
+   没有 UI 自救入口 — 必须 DB 手动改 `Agent.isAdmin = true`(刻意为之,SPEC §3.5.1 Bootstrap 约束)。
+4. **T4 DELETE 与 T3 DELETE 重复逻辑**:两条端点的事务 + 约束代码相似但不完全相同;
+   暂不抽公共函数(只有 2 处,DRY 收益不抵阅读成本)。
 
 ---
 
@@ -1480,24 +1668,26 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | i18n 全面本地化 | 1(§-7:zh-CN 主体全量中文化 + dashboard admin 入口) |
 | Agent.md 下载突出 | 1(§-8:dashboard 置顶 AGENT.MD Section + 复制为默认动作) |
 | 装饰符合规清理 | 1(§-9:全项目 ⚠ / ✓ / ⚠️ / ★ emoji 替换 + 元信息 Section 简化) |
+| Admin 详情页 + 删除 Agent | 1(§-10:`/admin/agents/[email]` 详情页 + T4 DELETE 端点 + 返回 admin 入口) |
 
 | 文件改动统计 | 数量 |
 |---|---|
-| 新建文件 | 13(+ 1:`AgentMdHero.tsx`) |
-| 修改文件 | 20(+ 1:`admin/alliances/[slug]/page.tsx` 删 META Section) |
-| 新增 API 端点 | 3(promote / demote / self-delete) |
+| 新建文件 | 15(+ 2:`AgentMdHero.tsx` + `AdminDeleteAgentButton.tsx` + `admin/agents/[email]/page.tsx` 详情页) |
+| 修改文件 | 22(+ 1:`DeleteAcctButton.tsx` 加 2 prop + 1:`admin/agents/page.tsx` 改 `[ > VIEW ]` 跳转 + 1:`admin/alliances/page.tsx` 加返回按钮) |
+| 新增 API 端点 | 4(promote / demote / self-delete / **admin-delete**) |
 | 新增 API 字段 | 6(WEAK_PASSWORD 3 子类 + isPrimary×2 + primaryAllianceSlug) |
 | 新增错误码 | 1(LAST_ADMIN) |
 | 新增公共页面 | 2(`/agents`、`/events`) |
-| 新增 UI 组件 | 5(+1:`AgentMdHero`,并列 2 按钮 + 复制默认) |
-| 新增字典 key | 275(§-2:248 + §-5:9 + §-6:13 + §-7:1 + §-8:14) |
+| 新增 UI 组件 | 6(+1:`AgentMdHero` +1:`AdminDeleteAgentButton` 包装层) |
+| 新增字典 key | 295(§-2:248 + §-5:9 + §-6:13 + §-7:1 + §-8:14 + **§-10:10**) |
 | 删除字典 key | 8(§-9:4 × 2 langs,META Section 用) |
 | 新增 Prisma 字段 | 1(`Alliance.isPrimary` + 索引) |
 | 新增 i18n 命名空间 | 14(+ 1:`agentMdHero`) |
 
 | Git 提交(全部已推送 main) | 内容 |
 |---|---|
-| 本轮(§-9) | refactor: 全项目 emoji 替换为装饰符家族 + 元信息 Section 简化 |
+| 本轮(§-10) | feat: Admin 详情页 + DELETE 任意 Agent + 返回 admin 入口 |
+| 上轮(§-9) | refactor: 全项目 emoji 替换为装饰符家族 + 元信息 Section 简化 |
 | `8558590` | feat: Agent.md Hero · dashboard 置顶 + 复制默认动作(§-8) |
 | `7e6a7eb` | feat(i18n): zh-CN 主体全量中文化 + dashboard admin 入口(§-7) |
 | `8819eee` | feat: full i18n + Agent.md Outreach SOP + 删 2 个 GUI 按钮(67 files, +2934/-611) |

@@ -168,7 +168,7 @@ export default async function AdminAgentsPage({ searchParams }: PageProps) {
                     <div><span className="text-dim">{t("colEvents")}</span> : {formatNumber(a._count.events)}</div>
                   </div>
                   <div className="mt-2 pl-11 flex flex-wrap gap-2">
-                    <LinkButton variant="secondary" href={`/agents/${a.email}`}>
+                    <LinkButton variant="secondary" href={`/admin/agents/${encodeURIComponent(a.email)}`}>
                       {t("colView")}
                     </LinkButton>
                     <LinkButton
