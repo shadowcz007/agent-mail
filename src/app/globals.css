@@ -1,26 +1,105 @@
 @import "tailwindcss";
 
-:root {
+/* ============================================================
+   agent-mail · 3 themes via CSS variables
+   default = protocol-registry; override on [data-theme=...]
+   ============================================================ */
+
+:root,
+[data-theme="protocol-registry"] {
+  --background: #fcf9f3;
+  --on-background: #1c1c18;
+  --surface: #fcf9f3;
+  --surface-container: #f1ede8;
+  --on-surface: #1c1c18;
+  --primary: #000000;
+  --on-primary: #ffffff;
+  --accent: #00ff41;
+  --on-accent: #002203;
+  --warning: #ffb800;
+  --on-warning: #1c1c18;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --outline: #747878;
+  --outline-variant: #c4c7c7;
+  --dim: #5f5e5e;
+}
+
+[data-theme="terminal"] {
+  --background: #1c1c18;
+  --on-background: #fcf9f3;
+  --surface: #31302d;
+  --surface-container: #1c1c18;
+  --on-surface: #f4f0eb;
+  --primary: #00ff41;
+  --on-primary: #002203;
+  --accent: #72ff70;
+  --on-accent: #002203;
+  --warning: #ffb800;
+  --on-warning: #1c1c18;
+  --error: #ff6b6b;
+  --on-error: #410002;
+  --outline: #747878;
+  --outline-variant: #444748;
+  --dim: #c4c7c7;
+}
+
+[data-theme="studio"] {
   --background: #ffffff;
-  --foreground: #171717;
+  --on-background: #0d0d0d;
+  --surface: #ffffff;
+  --surface-container: #f5f5f5;
+  --on-surface: #0d0d0d;
+  --primary: #000000;
+  --on-primary: #ffffff;
+  --accent: #5f5e5e;
+  --on-accent: #ffffff;
+  --warning: #ffb800;
+  --on-warning: #1c1c18;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --outline: #747878;
+  --outline-variant: #c4c7c7;
+  --dim: #5f5e5e;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--background);
+  --color-on-bg: var(--on-background);
+  --color-surface: var(--surface);
+  --color-surface-container: var(--surface-container);
+  --color-on-surface: var(--on-surface);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-warning: var(--warning);
+  --color-on-warning: var(--on-warning);
+  --color-error: var(--error);
+  --color-on-error: var(--on-error);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-dim: var(--dim);
+  --font-display: var(--font-space-mono), "Space Mono", ui-monospace, monospace;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html,
+  body {
+    background: var(--background);
+    color: var(--on-background);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 20px;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  *,
+  *::before,
+  *::after {
+    border-radius: 0 !important;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
 }
