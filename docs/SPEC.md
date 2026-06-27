@@ -586,7 +586,7 @@ function authTier1(req, res, next) {
 
 **为什么 POST /api/events 是 Tier 2(Bearer Only)**
 
-Event 是"故事流",设计上由 CC 主动推送;Web 用户目前没有"发布事件"按钮(LAYOUT §3.5 Dashboard 的 `[ > PUBLISH EVENT ]` 待 Phase 2 启用)。Bearer-only 强制确保事件来源可追溯到具体的 apiKey(便于审计)。
+Event 是"故事流",设计上由 CC 主动推送;Web 用户**没有**"发布事件"按钮(2026-06-27 决策:删除原 LAYOUT §3.5 Dashboard 的 `[ > PUBLISH EVENT ]`,改由 CC 通过 Bearer API 发布)。Bearer-only 强制确保事件来源可追溯到具体的 apiKey(便于审计)。
 
 **为什么 Read 端点是 Tier 1 而不是 T0**
 

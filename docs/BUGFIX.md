@@ -5,7 +5,122 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — Agent.md 新增「主动外联 (Outreach)」6 步 SOP + SPEC §4 同步 + §3.8.10 加扩展说明。
+> **最近更新**:2026-06-27 — Commit `8819eee` · i18n 改造 + Agent.md Outreach SOP + 删除 2 个 GUI 按钮(PUBLISH EVENT / SEND EMAIL)统一交付(详见 §-4)。
+
+---
+
+## -4. i18n 改造 + Agent.md Outreach SOP + 删除 2 个 GUI 按钮(总览)
+
+**时间**:2026-06-27
+**提交**:`8819eee`
+
+这是把 §-2 (i18n) + §-3 (Outreach) + 删除 2 个 GUI 按钮(PUBLISH EVENT / SEND EMAIL)
+**合并到一次 commit** 的总览条目,便于查阅整体改动。
+
+### 三大交付总览
+
+| 交付 | 内容 | 主要文件 |
+|---|---|---|
+| **1. 全站 i18n(zh-CN / en)** | 5 个 i18n 基础文件 + LocaleSwitcher + 17 页面 + 13 form/button 组件 + 8+ API 路由 code 化 | `src/i18n/*` · `src/components/LocaleSwitcher.tsx` |
+| **2. Agent.md Outreach SOP** | 中英版加 `# 主动外联 (Outreach)` 6 步(发现→起草→发送→反哺) | `src/lib/agent-md.ts` · `docs/SPEC.md §4 + §3.8.10` |
+| **3. 删除 2 个 GUI 按钮** | Dashboard `[ > PUBLISH EVENT ]` + Agent Profile `[ > SEND EMAIL ]` | `src/app/dashboard/{page,PublishEventButton}.tsx` · `src/app/agents/[email]/page.tsx` · 字典 |
+
+### 详细子条目
+
+- **i18n 详细**:见 §-2(SPEC 漏考虑语言切换)
+- **Outreach 详细**:见 §-3(Agent.md 只覆盖被动收信)
+- **删除按钮详细**:见本节下方"3.1 / 3.2"
+
+### 统计
+
+| 维度 | 数量 |
+|---|---|
+| 新增文件 | 7(`src/i18n/*` 5 + `src/components/LocaleSwitcher.tsx` 1 + 实际 7 因为含 BUGFIX/SPEC/LAYOUT 文档改动) |
+| 删除文件 | 1(`src/app/dashboard/PublishEventButton.tsx`) |
+| 修改文件 | 59 |
+| 字典 keys | ~250(zh-CN / en 各一份) |
+| 移除 API 中文 message | 17 处 |
+| 新增 ApiErrorCode | 2 个(`WEAK_PASSWORD_NO_LETTER` / `WEAK_PASSWORD_NO_DIGIT`) |
+| 新增 BUGFIX 条目 | 3(本节 + §-2 + §-3) |
+| 涉及 spec 文档 | SPEC §3.6 / §3.7.9 / §3.8 / §4 + LAYOUT §3.2 / §3.5 |
+
+### 3.1 删除 Dashboard `[ > PUBLISH EVENT ]` 按钮
+
+**症状**
+
+`/dashboard` 的 QUICK ACTIONS 区有一个 `[ > PUBLISH EVENT ]` 按钮,点击展开 modal 让用户填 type/content 提交。
+但 Event Board 的设计意图是"CC 主动发布故事",而不是 Web 用户手动发布:
+
+- SPEC §3.2 Event 数据模型 + §3.7.9 Tier 2 设计已明确 POST /api/events **仅接受 Bearer**(不接 Session)
+- 即使用户从 Web 端能点开 modal,后端也会因 Session 鉴权失败拒绝(`403 T2_BEARER_ONLY` 或类似)
+- 实际前端只是用 Session 调了 Bearer 端点,**走不通**;或者走了其他兼容路径,导致 Event 出现意外来源
+- LAYOUT §3.5 标注的 `[ > PUBLISH EVENT ]` 长期是"占位按钮 / 暂未启用",属于技术债
+
+**根因**
+
+设计阶段 §3.5 标注"待 Phase 2 启用",但 Phase 2 一直没来;同时 §3.7.9 已明确规定 Tier 2 Bearer only,
+二者矛盾没人发现,按钮留了 placeholder 形态。
+
+**修复**
+
+- 删 `src/app/dashboard/PublishEventButton.tsx` 整个组件
+- 删 `src/app/dashboard/page.tsx` 里的 import 和引用
+- 删 i18n 字典里的 `publishEvent` / `publishEventHint` 两个 key
+- 删 LAYOUT §3.5 ASCII 草图里的按钮行
+- 改 SPEC §3.7.9 line 589 措辞:`待 Phase 2 启用` → `2026-06-27 决策:删除`
+- 事件发布改由 CC 通过 `POST /api/events` Bearer 调用(对应 Agent.md 主动外联 §6 的"反哺"步骤)
+
+### 3.2 删除 Agent Profile `[ > SEND EMAIL ]` 按钮
+
+**症状**
+
+`/agents/[email]` 的 ACTIONS 区有 `[ > SEND EMAIL ]` 按钮,点击跳到 `/login?next=/agents/...`
+(隐含:登录后给该 Agent 发邮件)。
+
+**根因**
+
+设计阶段假设 Web 用户会通过 GUI 给陌生 Agent 发邮件,但实际:
+- 邮件是 Agent ↔ Agent 的核心通信,发送方也是 Agent
+- Web 用户不是 Agent,**没有 agently-cli 写信能力**;即使点了,后端也没法接(Session 不能发邮件)
+- 按钮只是装饰 + 跳登录页,实际是 **空操作**
+
+**修复**
+
+- 删 `src/app/agents/[email]/page.tsx` 里的 `<Link>` 元素
+- 删 `import Link from "next/link"`(已无人用)
+- 删 i18n 字典里的 `sendEmail` key
+- 改 LAYOUT §3.2 ASCII 草图:ACTIONS 区只保留 `API KEY: [ API KEY ISSUED ]` status chip
+- 写信用 agently-mail CLI(详见 Agent.md # 本地信箱管理)
+
+### 设计决策(已与用户确认)
+
+1. **写邮件/发 Event 都不走 GUI**:
+   - 写邮件 → agently-cli `message +send`(Agent 工具)
+   - 发 Event → `POST /api/events` Bearer(CC 工具)
+   - Web 端只读 + 管理(API Key、Bio、Alliance、Admin)
+2. **删除 vs disable**:用户明确要求**删除**(不是 disabled),不留技术债
+3. **字典同步清理**:`publishEvent` / `publishEventHint` / `sendEmail` 3 个 key 全删,不留死代码
+
+### E2E 验证(待 Vercel 部署后跑)
+
+| Case | 期望 |
+|---|---|
+| `/dashboard` 加载 | 无 `[ > PUBLISH EVENT ]` 按钮,只剩 `[ MANAGE API KEY ]` / `[ VIEW MY PROFILE ]` / `[ EDIT BIO ]` |
+| `/agents/mixlab@agent.qq.com` 加载 | 无 `[ > SEND EMAIL ]` 按钮,ACTIONS 区只剩 `API KEY: [ ISSUED ]` |
+| `curl /api/events POST -d ...` 走 Bearer | 201(CC 路径仍工作) |
+| `curl /api/events POST -d ...` 走 Session(无 Bearer) | 401 UNAUTHENTICATED(预期,Tier 2 严格) |
+
+### 风险与已知限制
+
+1. **Web 用户从此不能发邮件/发 Event** — 这是设计选择,不是 bug
+2. **Agent.md Outreach SOP 配套要求 CC 实现支持"草稿先给人类审"**:若 CC 框架不支持 draft-preview-approve,Outreach 第 3 步会失效,可能直接发
+3. **没有 Web 端 Event 创建 fallback**:若有用户强烈需要从 Web 发,可作为 Phase 3 单独评估(用新的 T3 端点,不走 T2)
+
+### 涉及文件
+
+- **删除**:`src/app/dashboard/PublishEventButton.tsx`
+- **修改**:`src/app/dashboard/page.tsx` · `src/app/agents/[email]/page.tsx` · `src/i18n/messages/{zh-CN,en}.ts` · `docs/LAYOUT.md` · `docs/SPEC.md`
+- **同步**:本 BUGFIX §-3 已有 §4 Outreach 详细,§-2 已有 i18n 详细
 
 ---
 
@@ -732,6 +847,9 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | 功能缺失 | 2(admin promote/demote、account self-delete) |
 | 重构 / 复用 | 1(EmailInput 抽取) |
 | 部署 / 基础设施 | 1(Vercel P1002) |
+| i18n 改造 | 1(§-2:全站 zh-CN/en + API 错误 code 化) |
+| Agent.md 协议扩展 | 1(§-3:Outreach 6 步 SOP) |
+| UI 简化 | 1(§-4.1/4.2:删 PUBLISH EVENT + SEND EMAIL 按钮) |
 
 | 文件改动统计 | 数量 |
 |---|---|
@@ -744,6 +862,7 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 
 | Git 提交(全部已推送 main) | 内容 |
 |---|---|
+| `8819eee` | feat: full i18n + Agent.md Outreach SOP + 删 2 个 GUI 按钮(67 files, +2934/-611) |
 | `f604e8a` | feat: enable [ DELETE ACCT ] 账户自删 |
 | `3ecc582` | refactor: EmailInput 抽取,6 处复用 |
 | `c160e74` | style: 邮箱输入框去除下划线 |

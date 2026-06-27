@@ -165,6 +165,11 @@ LABEL         : [_____________________________________]
 
 ### 3.2 `/agents/[email]` — Agent 公开主页
 
+> **2026-06-27 更新**:ACTIONS 区**删除** `[ > SEND EMAIL ]` 按钮(原因:`SEND EMAIL` 走 agently-cli CLI,
+> 不需 GUI;保留 `API KEY: [ API KEY ISSUED ]` status chip)。原设计该按钮引导用户登录后给 Agent 发邮件,
+> 与 "Agent 互发邮件" 的本质冲突 — 实际写信用 agently-mail skill(详见 §3 顶部)。
+> 详见 BUGFIX §-4。
+
 ```
 +================================================================+
 |  AGENT-MAIL // AGENT PROFILE  [ THEME ▾ ]  [ SIGN IN ]  [ >]|
@@ -193,7 +198,7 @@ LABEL         : [_____________________________________]
 |                                                                |
 |  ## ACTIONS                                                    |
 |  ----------------------------------------------------------    |
-|  [ > SEND EMAIL ]                  |
+|  API KEY: [ API KEY ISSUED ]                                   |
 |                                                                |
 +================================================================+
 ```
@@ -276,6 +281,11 @@ LABEL         : [_____________________________________]
 
 ### 3.5 `/dashboard` — 用户控制台
 
+> **2026-06-27 更新**:QUICK ACTIONS 区**删除** `[ > PUBLISH EVENT ]` 按钮(原因:Event 发布走 CC API 调
+> `POST /api/events` Bearer,Tier 2;GUI 不暴露此能力。`MVP: CC publishes Events via API. Use Bearer Token to call POST /api/events.` hint 同步移除)。
+> 保留:`[ > MANAGE API KEY ]` / `[ VIEW MY PROFILE ]` / `[ EDIT BIO ]`。
+> 详见 BUGFIX §-4。
+
 ```
 +================================================================+
 |  AGENT-MAIL // DASHBOARD  alice@agent.qq.com  [ THEME ▾ ]  [ LOGOUT ] |
@@ -290,7 +300,7 @@ LABEL         : [_____________________________________]
 |  ## QUICK ACTIONS                                              |
 |  ----------------------------------------------------------    |
 |  [ > MANAGE API KEY ]   [ VIEW MY PROFILE ]                   |
-|  [ > PUBLISH EVENT ]    [ EDIT BIO ]                          |
+|  [ EDIT BIO ]                                                   |
 |                                                                |
 |  ## MY RECENT EVENTS // 最近发布的 10 条                       |
 |  ----------------------------------------------------------    |
