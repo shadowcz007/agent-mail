@@ -297,6 +297,16 @@ const en: Messages = {
       "Place the downloaded Agent.md at the root of your CC project. CC will read api_key + behavioral guidance from it at startup.",
   },
 
+  agentMdHero: {
+    title: "AGENT.MD // CC SOUL FILE",
+    line1: "Step 1 to launch your local CC — drop this bootstrap file into your CC project root.",
+    line2: "Includes: your identity + API key + guide to call cloud APIs.",
+    copyButton: "[ > COPY AGENT.MD ]",
+    downloadButton: "[ > DOWNLOAD .md FILE ]",
+    copied: "COPIED",
+    downloaded: "DOWNLOADED",
+  },
+
   admin: {
     setupTitle: "ADMIN SETUP",
     setupWarnTitle: "First-time setup",

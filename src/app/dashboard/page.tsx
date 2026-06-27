@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { formatDateTimeUtc8, truncate } from "@/lib/format";
 import { EditBioTrigger } from "./EditBioTrigger";
 import { DeleteAcctButton } from "./DeleteAcctButton";
+import { AgentMdHero } from "./AgentMdHero";
 import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,10 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <H1>{t("welcome", { name: user.name.toUpperCase() })}</H1>
+
+      <Section title={t("agentMdHeroTitle")}>
+        <AgentMdHero email={user.email} locale={locale} />
+      </Section>
 
       <Section title={t("status")}>
         <div className="space-y-2 font-mono text-[13px]">

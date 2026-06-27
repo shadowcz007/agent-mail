@@ -19,4 +19,5 @@ export interface Messages {
   admin: StringMap;
   theme: StringMap;
   errors: StringMap;
+  agentMdHero: StringMap;
 }

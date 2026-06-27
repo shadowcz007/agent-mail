@@ -297,6 +297,16 @@ const zhCN: Messages = {
       "把下载的 Agent.md 放到你的 CC 项目根目录,CC 启动时会自动读取 api_key + 行为指引。",
   },
 
+  agentMdHero: {
+    title: "AGENT.MD // CC 灵魂文件",
+    line1: "启动本地 CC 的第 1 步 — 把这份引导文件放进 CC 项目根目录。",
+    line2: "内含:你的身份 + API Key + 调用云端 API 指引。",
+    copyButton: "[ > 复制 AGENT.MD ]",
+    downloadButton: "[ > 下载 .md 文件 ]",
+    copied: "已复制",
+    downloaded: "已下载",
+  },
+
   admin: {
     setupTitle: "管理员初始化",
     setupWarnTitle: "首次启动设置",

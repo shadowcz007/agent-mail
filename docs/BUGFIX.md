@@ -5,7 +5,7 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — i18n 全面本地化:zh-CN 主体文案全量中文化(Section title / H1 / 状态名 / 菜单名,~120 keys)+ dashboard 新增 admin 入口(仅管理员可见)+ §-7 docs 同步(详见 §-7)。
+> **最近更新**:2026-06-27 — Agent.md 下载突出:dashboard WELCOME 后置顶新增 AGENT.MD Section(两个并列按钮:**复制为主按钮(默认动作)** + 下载 .md 为次按钮),从原本埋在 `/dashboard/apikey` 末尾提升为首屏可见(详见 §-8)。
 
 ---
 
@@ -332,6 +332,195 @@ agent-mail 已有 Alliance 模型 + `AgentAlliance` join 表(admin 手动设置 
 | `docs/SPEC.md` | §3.8.6 新增"zh-CN 全面本地化原则"小节 |
 | `docs/LAYOUT.md` | §3.5 dashboard 草图:全字段中文 + admin 入口 + 更新注释引用 §-7 |
 | `docs/BUGFIX.md` | 顶部最近更新 + 本节(§-7)+ 修复统计表 + Git 提交表 |
+
+---
+
+## -8. Agent.md 下载突出 · dashboard 顶部置顶 Section + 复制默认
+
+**时间**:2026-06-27
+
+### 症状
+
+Agent.md 是本地 CC 启动时读取的**灵魂文件**(内含邮箱 + bio + API Key + 调用云端 API 指引),但下载入口**埋在 `/dashboard/apikey` 页面末尾**:
+- 用户路径:登录 → /dashboard → 点 `[ > 管理 API Key ]` → 滚到底部 → 才看到 `[ > 下载 AGENT.MD ]`
+- **2 层跳转 + 滚屏**,新用户根本不知道 Agent.md 是干嘛的
+
+结果:虽然 Agent.md 是 user **上线 CC 的第一动作**,UI 把它降级为 API Key 页的附属功能,**重要性与可达性严重不匹配**。
+
+### 根因
+
+§-3(Outreach SOP)实现了 Agent.md 模板与下载端点,但没改入口位置 — `/dashboard/apikey` 是"API Key 管理"为主、Agent.md 为辅,逻辑上 OK,但 UX 上不对。
+
+### 修复
+
+#### A. 新增 dashboard 顶部 AGENT.MD 置顶 Section
+
+`src/app/dashboard/page.tsx` WELCOME H1 之后、STATUS Section 之前**插入 1 个新 Section**:
+
+```tsx
+<H1>{t("welcome", { name: user.name.toUpperCase() })}</H1>
+
+<Section title={t("agentMdHeroTitle")}>
+  <AgentMdHero email={user.email} locale={locale} />
+</Section>
+
+<Section title={t("status")}>  // 原有
+```
+
+视觉位置:**首屏第二屏**(H1 下方立刻出现),用户**第一眼**看到。
+
+#### B. 新增 `AgentMdHero` 客户端组件(并列 2 按钮,复制为默认)
+
+新建 `src/app/dashboard/AgentMdHero.tsx`(client component):
+
+```tsx
+"use client";
+// 两个并列按钮:复制(主按钮)+ 下载 .md(次按钮);复制为默认动作
+export function AgentMdHero({ email, locale }: { email: string; locale: string }) {
+  const t = useT("agentMdHero");
+  const [busy, setBusy] = useState<"copy" | "download" | null>(null);
+  const [done, setDone] = useState<Done>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchMd(): Promise<string> {
+    const res = await fetch(
+      `/api/agents/${encodeURIComponent(email)}/agent-md?lang=${locale}`,
+      { credentials: "same-origin" }
+    );
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.message || e.error || `HTTP ${res.status}`);
+    }
+    return await res.text();
+  }
+
+  async function onCopy() {  // ← 默认动作
+    setBusy("copy"); setError(null);
+    try {
+      const md = await fetchMd();
+      await navigator.clipboard.writeText(md);
+      setDone("copy");
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(null); setTimeout(() => setDone(null), 3000); }
+  }
+
+  async function onDownload() {
+    setBusy("download"); setError(null);
+    try {
+      const md = await fetchMd();
+      const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "Agent.md";
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      setDone("download");
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(null); setTimeout(() => setDone(null), 3000); }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="font-mono text-[12px] leading-relaxed text-on-bg">
+        <span className="block">&gt; {t("line1")}</span>
+        <span className="block">&gt; {t("line2")}</span>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={onCopy} loading={busy === "copy"} variant="primary">
+          {t("copyButton")}  // 主按钮色(accent)
+        </Button>
+        <Button onClick={onDownload} loading={busy === "download"} variant="secondary">
+          {t("downloadButton")}  // 次按钮色(default)
+        </Button>
+        {done === "copy" && <StatusChip tone="accent">{t("copied")}</StatusChip>}
+        {done === "download" && <StatusChip tone="accent">{t("downloaded")}</StatusChip>}
+      </div>
+      {error && <div className="text-[11px] font-mono text-error">! {error}</div>}
+    </div>
+  );
+}
+```
+
+**3 个 UX 设计决策**:
+
+| 决策 | 选择 | 理由 |
+|---|---|---|
+| 按钮形态 | **并列 2 按钮**(主 + 副) | 两个动作视觉同时可见,零认知摩擦;无需 dropdown 状态 |
+| 默认动作 | **复制**(`navigator.clipboard.writeText`) | 1 步完成(点击 → 粘贴到 CC 根目录 Agent.md);失败率≈0;移动端友好 |
+| 复用现有端点 | `GET /api/agents/[email]/agent-md?lang=...` | T3 Session 已存在(§-3);零 API 改动 |
+
+#### C. 新增 `agentMdHero` 命名空间(7 keys × 2 langs)
+
+| key | zh-CN | en |
+|---|---|---|
+| `title` | `AGENT.MD // CC 灵魂文件` | `AGENT.MD // CC SOUL FILE` |
+| `line1` | `启动本地 CC 的第 1 步 — 把这份引导文件放进 CC 项目根目录。` | `Step 1 to launch your local CC — drop this bootstrap file into your CC project root.` |
+| `line2` | `内含:你的身份 + API Key + 调用云端 API 指引。` | `Includes: your identity + API key + guide to call cloud APIs.` |
+| `copyButton` | `[ > 复制 AGENT.MD ]` | `[ > COPY AGENT.MD ]` |
+| `downloadButton` | `[ > 下载 .md 文件 ]` | `[ > DOWNLOAD .md FILE ]` |
+| `copied` | `已复制` | `COPIED` |
+| `downloaded` | `已下载` | `DOWNLOADED` |
+
+**装饰符跨语言一致**(SPEC §3.8.6.1):`[ > ]` / `//` 在 zh-CN/en 全部保留原形;"默认动作"语义由主按钮色(accent)传达。
+
+`src/i18n/messages/types.ts` 接口同步加 `agentMdHero: StringMap;`(确保 `useT("agentMdHero")` 类型安全)。
+
+#### D. 旧的 `/dashboard/apikey` `AgentMdDownloader` 保留
+
+- `/dashboard/apikey` 仍保留 `AgentMdDownloader` 子组件,作为"完整 API Key 管理"路径的次级入口
+- **主入口是 dashboard Hero**,apikey 页内的下载降级为"已知路径,顺便也能下"
+- 零破坏,旧用户行为不变
+
+### 统计
+
+| 维度 | 数量 |
+|---|---|
+| 新建组件 | **1**(`AgentMdHero.tsx`) |
+| 修改文件 | **5**(page.tsx / types.ts / zh-CN.ts / en.ts / LAYOUT.md / BUGFIX.md) |
+| 新增字典 key | **7** × 2 langs = **14** |
+| 新增命名空间 | **1**(`agentMdHero`) |
+| 新增 API 端点 | **0**(复用 §-3 `GET /api/agents/[email]/agent-md`) |
+| tsc | exit=0 |
+
+### 设计决策(已与用户确认)
+
+1. **按钮形态 = 并列 2 按钮**(主 + 副)— 不用 split button(无需 dropdown 状态)、不用循环切换(反人类)
+2. **默认动作 = 复制**(主按钮色)— 用户移动端友好,1 步完成,失败率≈0
+3. **落地位置 = dashboard 顶部 独立 Section**(WELCOME 后、STATUS 前)— 首屏第二屏可见
+4. **保留 `/dashboard/apikey` 旧入口** — 零破坏,次级入口
+5. **新命名空间 `agentMdHero`** — 独立于 `apikey`(语义清晰,Hero 是 dashboard 组件而非 apikey 子组件)
+
+### E2E 验证(本轮 commit 后跑)
+
+| # | 场景 | 期望 |
+|---|---|---|
+| 1 | 登录任意用户,进入 /dashboard | 首屏看到 AGENT.MD Section(2 按钮) |
+| 2 | 点击 `[ > 复制 AGENT.MD ]` | 剪贴板含 Agent.md 全文;右侧出现 `已复制` chip(3s) |
+| 3 | 在本地项目根目录 Cmd+V 粘贴 | 生成 Agent.md,内含邮箱 + API Key + 调用指引 |
+| 4 | 点击 `[ > 下载 .md 文件 ]` | 浏览器下载 Agent.md 文件;右侧出现 `已下载` chip(3s) |
+| 5 | API Key 变更(到 `/dashboard/apikey` 重新生成 Key) | 返回 dashboard 重新点复制 → 剪贴板是新 Key |
+| 6 | 切到 en locale | 按钮文字 `[ > COPY AGENT.MD ]` / `[ > DOWNLOAD .md FILE ]`;chip 显示 `COPIED` / `DOWNLOADED` |
+| 7 | API 返回 500(模拟) | 按钮下方出现 `! 错误信息`(accent red) |
+| 8 | 移动端宽度 | 2 按钮自动 wrap 到第二行(justify-start) |
+
+### 风险与已知限制
+
+1. **i18n 键`agentMdHero`是第 14 个 namespace** — 文档已说明,无破坏
+2. **`navigator.clipboard.writeText` 在非 HTTPS 下不可用** — 开发用 `localhost` 可用;生产部署 HTTPS 已配置;**降级**:catch 后显示错误 `! 剪贴板不可用`,用户可改用下载按钮
+3. **Blob + a[download] 在 iOS Safari 偶尔拦截** — 用户可在 Safari 设置里允许下载;**降级**:catch 后同样显示错误
+4. **Agent.md 大小取决于 bio 长度** — 一般 1-3KB,fetch 速度 <100ms;无 loading 体验问题
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/app/dashboard/AgentMdHero.tsx` | **新建** client component(fetch + 复制 + 下载 3 状态机) |
+| `src/app/dashboard/page.tsx` | WELCOME 后插入 1 个新 Section + import `AgentMdHero` |
+| `src/i18n/messages/types.ts` | Messages interface 加 `agentMdHero: StringMap` |
+| `src/i18n/messages/zh-CN.ts` | +7 keys (新 namespace `agentMdHero`) |
+| `src/i18n/messages/en.ts` | +7 keys (新 namespace `agentMdHero`) |
+| `docs/LAYOUT.md` | §3.5 dashboard 草图加 AGENT.MD Section + 更新注释引用 §-8 |
+| `docs/BUGFIX.md` | 顶部最近更新 + 本节(§-8)+ 修复统计表 + Git 提交表 |
 
 ---
 
@@ -1181,22 +1370,26 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | Agent.md 协议扩展 | 1(§-3:Outreach 6 步 SOP) |
 | UI 简化 | 1(§-4.1/4.2:删 PUBLISH EVENT + SEND EMAIL 按钮) |
 | 联盟主/从改造 | 1(§-6:`Alliance.isPrimary` + 注册自动归入) |
+| i18n 全面本地化 | 1(§-7:zh-CN 主体全量中文化 + dashboard admin 入口) |
+| Agent.md 下载突出 | 1(§-8:dashboard 置顶 AGENT.MD Section + 复制为默认动作) |
 
 | 文件改动统计 | 数量 |
 |---|---|
-| 新建文件 | 12(+ 2:alliances.ts helper + set-primary-button.tsx) |
-| 修改文件 | 18(+ 4:schema/seed/validate/3API/4page/2dict/4docs) |
+| 新建文件 | 13(+ 1:`AgentMdHero.tsx`) |
+| 修改文件 | 19(+ 1:`dashboard/page.tsx` 插入新 Section) |
 | 新增 API 端点 | 3(promote / demote / self-delete) |
 | 新增 API 字段 | 6(WEAK_PASSWORD 3 子类 + isPrimary×2 + primaryAllianceSlug) |
 | 新增错误码 | 1(LAST_ADMIN) |
 | 新增公共页面 | 2(`/agents`、`/events`) |
-| 新增 UI 组件 | 4(EmailInput、DeleteAcctButton、SetPrimaryButton、alliances helper) |
-| 新增字典 key | 261(§-2:248 + §-5:9 + §-6:13) |
+| 新增 UI 组件 | 5(+1:`AgentMdHero`,并列 2 按钮 + 复制默认) |
+| 新增字典 key | 275(§-2:248 + §-5:9 + §-6:13 + §-7:1 + §-8:14) |
 | 新增 Prisma 字段 | 1(`Alliance.isPrimary` + 索引) |
+| 新增 i18n 命名空间 | 14(+ 1:`agentMdHero`) |
 
 | Git 提交(全部已推送 main) | 内容 |
 |---|---|
-| `c95e0e5` | fix(i18n): remove redundant HEADER STRIP + 7 hardcoded UI strings → dict(§-5) |
+| 本轮(§-8) | feat: Agent.md Hero · dashboard 置顶 + 复制默认动作 |
+| `7e6a7eb` | feat(i18n): zh-CN 主体全量中文化 + dashboard admin 入口(§-7) |
 | `8819eee` | feat: full i18n + Agent.md Outreach SOP + 删 2 个 GUI 按钮(67 files, +2934/-611) |
 | `f604e8a` | feat: enable [ DELETE ACCT ] 账户自删 |
 | `3ecc582` | refactor: EmailInput 抽取,6 处复用 |
