@@ -19,21 +19,28 @@ export const PATCH = withAuth<{ slug: string }>("T4", async (req: NextRequest, {
     return apiError("VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
-  const data: { name?: string; bio?: string; url?: string | null } = {};
-  if (parsed.data.name !== undefined) data.name = parsed.data.name;
-  if (parsed.data.bio !== undefined) data.bio = parsed.data.bio;
-  if (parsed.data.url !== undefined) data.url = parsed.data.url;
+  const { isPrimary, ...rest } = parsed.data;
 
-  const alliance = await prisma.alliance.update({
-    where: { slug },
-    data,
-    select: {
-      slug: true,
-      name: true,
-      bio: true,
-      url: true,
-      _count: { select: { agents: true } },
-    },
+  const data: { name?: string; bio?: string; url?: string | null; isPrimary?: boolean } = { ...rest };
+  if (isPrimary !== undefined) data.isPrimary = isPrimary;
+
+  // isPrimary=true 时:事务内全表置 false → 设当前 true,保证全局唯一
+  const alliance = await prisma.$transaction(async (tx) => {
+    if (isPrimary === true) {
+      await tx.alliance.updateMany({ data: { isPrimary: false } });
+    }
+    return tx.alliance.update({
+      where: { slug },
+      data,
+      select: {
+        slug: true,
+        name: true,
+        bio: true,
+        url: true,
+        isPrimary: true,
+        _count: { select: { agents: true } },
+      },
+    });
   });
 
   return NextResponse.json({
@@ -41,6 +48,7 @@ export const PATCH = withAuth<{ slug: string }>("T4", async (req: NextRequest, {
     name: alliance.name,
     bio: alliance.bio,
     url: alliance.url,
+    isPrimary: alliance.isPrimary,
     agentCount: alliance._count.agents,
   });
 });

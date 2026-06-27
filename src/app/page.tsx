@@ -9,12 +9,14 @@ import {
   PromptLine,
 } from "@/components/ui/Section";
 import { ListRow } from "@/components/ui/ListRow";
+import { StatusChip } from "@/components/ui/StatusChip";
 import {
   formatNumber,
   formatDateUtc8,
   truncate,
 } from "@/lib/format";
 import { getLocale, getTranslator } from "@/i18n/server";
+import { getPrimaryAllianceOrFallback } from "@/lib/alliances";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +24,12 @@ export default async function HomePage() {
   const locale = await getLocale();
   const t = getTranslator(locale, "home");
 
-  const [agentCount, eventCount, allianceCount, alliances, recentAgents, recentEvents] =
+  const [agentCount, eventCount, allianceCount, primaryResult, recentAgents, recentEvents] =
     await Promise.all([
       prisma.agent.count(),
       prisma.event.count(),
       prisma.alliance.count(),
-      prisma.alliance.findMany({
-        include: { _count: { select: { agents: true } } },
-        orderBy: { createdAt: "asc" },
-      }),
+      getPrimaryAllianceOrFallback(),
       prisma.agent.findMany({
         select: { email: true, name: true, bio: true },
         orderBy: { createdAt: "desc" },
@@ -43,6 +42,8 @@ export default async function HomePage() {
         take: 10,
       }),
     ]);
+
+  const primary = primaryResult.alliance;
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,22 +64,43 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      {/* ALLIANCES */}
+      {/* ALLIANCES · 只展示主联盟(无主则 fallback to createdAt asc 第一条) */}
       <Section title={t("alliancesTitle")}>
-        {alliances.length === 0 ? (
+        {!primary ? (
           <PromptLine>{t("noAlliances")}</PromptLine>
         ) : (
-          <div className="flex flex-col">
-            {alliances.map((a, i) => (
-              <ListRow
-                key={a.id}
-                index={i + 1}
-                title={a.name}
-                meta={`${a._count.agents}`}
-                href={`/agents?alliance=${a.slug}`}
-                subtitle={truncate(a.bio, 80)}
-              />
-            ))}
+          <div className="flex flex-col gap-2">
+            <div className="border border-outline bg-bg text-on-bg p-3 flex flex-col gap-1.5 text-[13px] font-mono">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-on-bg font-bold text-[14px]">{primary.name}</span>
+                <StatusChip tone={primaryResult.autoSelected ? "warning" : "accent"}>
+                  {primaryResult.autoSelected
+                    ? t("alliancesAutoSelected")
+                    : t("alliancesPrimaryChip")}
+                </StatusChip>
+              </div>
+              <div className="text-on-bg/80">{truncate(primary.bio, 200)}</div>
+              {primary.url && (
+                <a
+                  href={primary.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-primary hover:text-accent break-all"
+                >
+                  {primary.url}
+                </a>
+              )}
+            </div>
+            {allianceCount > 1 && (
+              <div className="flex justify-end pt-2">
+                <Link
+                  href="/alliances"
+                  className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg hover:text-primary"
+                >
+                  {t("alliancesMore")}
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </Section>

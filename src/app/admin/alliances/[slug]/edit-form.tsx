@@ -13,6 +13,7 @@ interface Initial {
   name: string;
   bio: string;
   url: string;
+  isPrimary: boolean;
 }
 
 export function AllianceEditForm({
@@ -50,9 +51,10 @@ export function AllianceEditForm({
       const name = fd.get("name")?.toString().trim() ?? "";
       const bio = fd.get("bio")?.toString().trim() ?? "";
       const urlRaw = fd.get("url")?.toString().trim() ?? "";
+      const isPrimary = fd.get("isPrimary") === "on";
       await apiRequest(`/api/admin/alliances/${encodeURIComponent(slug)}`, {
         method: "PATCH",
-        body: { name, bio, url: urlRaw === "" ? null : urlRaw },
+        body: { name, bio, url: urlRaw === "" ? null : urlRaw, isPrimary },
       });
       router.refresh();
     } catch (err) {
@@ -86,6 +88,22 @@ export function AllianceEditForm({
         <Input name="url" type="url" defaultValue={initial.url} placeholder={t("allianceEditUrlPlaceholder")} />
       </Field>
 
+      <div className="border-t border-dashed border-outline pt-4 space-y-1">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="isPrimary"
+            defaultChecked={initial.isPrimary}
+            className="w-4 h-4 accent-primary"
+          />
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg">
+            {t("alliancePrimaryFieldLabel")}
+          </span>
+          {initial.isPrimary && <StatusChip tone="accent">{t("allianceIsPrimary")}</StatusChip>}
+        </label>
+        <PromptLine>{t("alliancePrimaryFieldHint")}</PromptLine>
+      </div>
+
       {error && (
         <PromptLine><StatusChip tone="error">{tCommon("error")}</StatusChip> {error}</PromptLine>
       )}
@@ -98,6 +116,10 @@ export function AllianceEditForm({
           {t("allianceEditCancel")}
         </Button>
       </div>
+
+      <PromptLine>
+        <StatusChip tone="default">{tCommon("note")}</StatusChip> {t("alliancePrimaryFieldNote")}
+      </PromptLine>
     </form>
   );
 }

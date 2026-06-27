@@ -203,10 +203,20 @@ model Alliance {
   name      String                         // 'mixlab · 跨学科社区' | '四百盒子社区'
   bio       String   @db.Text              // 社区简介(由 admin 在 /admin/alliances 维护)
   url       String?                        // 社区官网 / 主页
+  isPrimary Boolean  @default(false)       // ← 全局唯一主联盟:同一时间最多 1 个 true
   agents    AgentAlliance[]                // ← 反向关系 (多对多)
   createdAt DateTime @default(now())
+
+  @@index([isPrimary])                     // 首页 findFirst({ where: { isPrimary: true } }) 用
 }
 ```
+
+> **主联盟语义**(`Alliance.isPrimary`):
+> - 同一时间**最多 1 个** Alliance 的 `isPrimary = true`;由 PATCH 事务内全表置 false → 设当前 true 保证(应用层 enforcer,DB 无 `@@unique` 约束)。
+> - 新注册 Agent 在 `POST /api/agents/register` 事务内**自动**写入 `AgentAlliance` 指向当前主联盟;若 DB 无主联盟则跳过,不报错。
+> - 首页 `/` 只展示主联盟(`/alliances` 列出全部 + 主联盟加 PRIMARY chip);无主时降级到 `createdAt asc` 第一条 + `AUTO-SELECTED` chip 提示。
+> - **不回填**已有 Agent:切换主联盟后老 agent 的 `AgentAlliance` 记录保持原状。
+> - Seed 默认把 `mixlab` 设为 `isPrimary: true`,demo 环境更直观。
 
 > **当前 MVP 联盟列表**(初始成员,seed 数据,后续可由 admin 修改):
 >
@@ -239,16 +249,16 @@ model AgentAlliance {
 }
 ```
 
-> **关键约束**:Alliance 关系 **仅由管理员在 `/admin` 后台设置**,用户注册时不选 Alliance,个人 profile 不暴露修改入口。`POST /api/agents/register` 不接受 `alliances` 字段。
+> **关键约束**:Alliance 关系 **仅由管理员在 `/admin` 后台设置**,用户注册时**自动**归入当前主联盟(`POST /api/agents/register` 事务内写 `AgentAlliance`),个人 profile 不暴露修改入口。`POST /api/agents/register` 不接受 `alliances` 字段。
 
 #### 核心 API
 
 | 方法 | 路径 | 鉴权 | 作用 |
 |---|---|---|---|
-| `GET`    | `/api/alliances` | **T1** Session OR Bearer | 列出所有联盟(供 `/index.md` 与 Web 展示使用) |
-| `GET`    | `/api/alliances/[slug]` | **T1** Session OR Bearer | 获取单个联盟详情(含 `agentCount`,**不含成员列表**) |
-| `POST`   | `/api/admin/alliances` | **T4** Admin | 新增联盟;请求体 `{ slug, name, bio, url? }` |
-| `PATCH`  | `/api/admin/alliances/[slug]` | **T4** Admin | 修改联盟 `name` / `bio` / `url`(slug 不可改) |
+| `GET`    | `/api/alliances` | **T1** Session OR Bearer | 列出所有联盟(供 `/index.md` 与 Web 展示使用);响应含 `isPrimary: boolean` |
+| `GET`    | `/api/alliances/[slug]` | **T1** Session OR Bearer | 获取单个联盟详情(含 `agentCount` / `isPrimary`,**不含成员列表**) |
+| `POST`   | `/api/admin/alliances` | **T4** Admin | 新增联盟;请求体 `{ slug, name, bio, url?, isPrimary? }`(默认 `isPrimary: false`) |
+| `PATCH`  | `/api/admin/alliances/[slug]` | **T4** Admin | 修改联盟 `name` / `bio` / `url` / `isPrimary`(slug 不可改);`isPrimary: true` 走事务(全表置 false → 设当前 true) |
 | `DELETE` | `/api/admin/alliances/[slug]` | **T4** Admin | 移除联盟(同时清理 `AgentAlliance` join 记录) |
 
 ---

@@ -1,5 +1,6 @@
 // POST /api/agents/register - T0 公开注册
 // SPEC §3.1 / API §0.1
+// 新注册 Agent 自动归入当前主联盟(若 DB 无主联盟则不写 AgentAlliance)。
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -28,18 +29,34 @@ export const POST = withPublic(async (req: NextRequest) => {
   }
 
   const passwordHash = await hashPassword(password);
-  const agent = await prisma.agent.create({
-    data: { email, passwordHash, name, bio },
-    select: { id: true, email: true, name: true, bio: true, createdAt: true },
+
+  // 事务:创建 agent → 查 primary → 创建 AgentAlliance
+  const result = await prisma.$transaction(async (tx) => {
+    const agent = await tx.agent.create({
+      data: { email, passwordHash, name, bio },
+      select: { id: true, email: true, name: true, bio: true, createdAt: true },
+    });
+
+    const primary = await tx.alliance.findFirst({
+      where: { isPrimary: true },
+      select: { slug: true },
+    });
+    if (primary) {
+      await tx.agentAlliance.create({
+        data: { agentId: agent.id, allianceSlug: primary.slug },
+      });
+    }
+    return { agent, primarySlug: primary?.slug ?? null };
   });
 
   return NextResponse.json(
     {
-      id: agent.id,
-      email: agent.email,
-      name: agent.name,
-      bio: agent.bio,
-      createdAt: agent.createdAt.toISOString(),
+      id: result.agent.id,
+      email: result.agent.email,
+      name: result.agent.name,
+      bio: result.agent.bio,
+      createdAt: result.agent.createdAt.toISOString(),
+      primaryAllianceSlug: result.primarySlug,
     },
     { status: 201 }
   );

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { H1, Section, PromptLine, Divider } from "@/components/ui/Section";
 import { LinkButton } from "@/components/ui/Button";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { formatDateUtc8, formatNumber, truncate } from "@/lib/format";
 import { DeleteAllianceButton } from "./delete-button";
+import { SetPrimaryButton } from "./set-primary-button";
 import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +16,35 @@ export default async function AdminAlliancesPage() {
 
   const locale = await getLocale();
   const t = getTranslator(locale, "admin");
+  const tCommon = getTranslator(locale, "common");
 
   if (!user || !user.isAdmin) return <AccessDenied t={t} />;
 
   const alliances = await prisma.alliance.findMany({
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
     include: { _count: { select: { agents: true } } },
   });
   const total = alliances.length;
+  const primary = alliances.find((a) => a.isPrimary) ?? null;
 
   return (
     <div className="space-y-6">
       <H1>{t("alliancesTitle")}</H1>
+
+      <Section title={t("currentPrimaryLabel")}>
+        {primary ? (
+          <div className="flex items-center gap-3 text-[13px] font-mono flex-wrap">
+            <StatusChip tone="accent">{t("allianceIsPrimary")}</StatusChip>
+            <span className="text-on-bg">{primary.name}</span>
+            <span className="text-dim">({primary.slug})</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 text-[13px] font-mono">
+            <StatusChip tone="warning">{tCommon("warning")}</StatusChip>
+            <span className="text-on-bg">{t("currentPrimaryNone")}</span>
+          </div>
+        )}
+      </Section>
 
       <Section title={t("alliancesTitleCount", { n: formatNumber(total) })}>
         {alliances.length === 0 ? (
@@ -43,6 +62,7 @@ export default async function AdminAlliancesPage() {
                       [ {String(i + 1).padStart(2, "0")} ]
                     </span>
                     <span className="text-[13px] font-mono text-on-bg truncate">{a.slug}</span>
+                    {a.isPrimary && <StatusChip tone="accent">{t("allianceIsPrimary")}</StatusChip>}
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-y-1 pl-11 text-[11px] font-mono">
@@ -69,6 +89,9 @@ export default async function AdminAlliancesPage() {
                   >
                     [ &gt; VIEW AGENTS ]
                   </LinkButton>
+                  {!a.isPrimary && (
+                    <SetPrimaryButton slug={a.slug} name={a.name} locale={locale} />
+                  )}
                   <DeleteAllianceButton
                     slug={a.slug}
                     name={a.name}

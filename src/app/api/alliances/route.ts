@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 
 export const GET = withAuth("T1", async () => {
   const alliances = await prisma.alliance.findMany({
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
     select: {
       slug: true,
       name: true,
       bio: true,
       url: true,
+      isPrimary: true,
       _count: { select: { agents: true } },
     },
   });
@@ -24,6 +25,7 @@ export const GET = withAuth("T1", async () => {
       name: a.name,
       bio: a.bio,
       url: a.url,
+      isPrimary: a.isPrimary,
       agentCount: a._count.agents,
     })),
   });

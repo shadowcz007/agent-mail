@@ -1,9 +1,9 @@
-// /alliances — 联盟列表
+// /alliances — 联盟列表(精简版:只展示 name / bio / url,主联盟加 PRIMARY chip)
 // LAYOUT §3.7 · API §1.6 GET /api/alliances
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Section, PromptLine } from "@/components/ui/Section";
-import { formatDateUtc8, padIndex, formatNumber } from "@/lib/format";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { getLocale, getTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,8 @@ export default async function AlliancesPage() {
   const t = getTranslator(locale, "alliances");
 
   const alliances = await prisma.alliance.findMany({
-    include: { _count: { select: { agents: true } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+    select: { id: true, slug: true, name: true, bio: true, url: true, isPrimary: true },
   });
 
   return (
@@ -23,48 +23,37 @@ export default async function AlliancesPage() {
         {alliances.length === 0 ? (
           <PromptLine>{t("noAlliances")}</PromptLine>
         ) : (
-          <div className="flex flex-col gap-6">
-            {alliances.map((a, i) => (
-              <div
+          <div className="flex flex-col gap-4">
+            {alliances.map((a) => (
+              <article
                 key={a.id}
-                className="border border-outline bg-bg text-on-bg"
+                className="border border-outline bg-bg text-on-bg p-4 flex flex-col gap-2 text-[13px] font-mono"
               >
-                <div className="bg-primary text-on-primary px-3 py-1.5 flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] font-mono whitespace-pre">
-                    HEADER STRIP // {padIndex(i + 1)} - {a.slug}
-                  </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-on-bg font-bold text-[14px]">{a.name}</span>
+                  {a.isPrimary && <StatusChip tone="accent">{t("primaryChip")}</StatusChip>}
                 </div>
-                <div className="px-3 py-3 flex flex-col gap-1.5 text-[13px] font-mono">
-                  <KV k={t("kvSlug")} v={a.slug} />
-                  <KV k={t("kvName")} v={a.name} />
-                  <BioBlock bio={a.bio} />
-                  <KV k={t("kvUrl")} v={a.url ?? "—"} />
-                  <KV k={t("kvAgents")} v={formatNumber(a._count.agents)} />
-                  <KV
-                    k={t("kvJoined")}
-                    v={formatDateUtc8(a.createdAt.toISOString(), locale)}
-                  />
-                  <div className="pt-2 flex items-center gap-3 flex-wrap">
-                    <Link
-                      href={`/agents?alliance=${a.slug}`}
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-primary bg-primary text-on-primary hover:bg-accent hover:text-on-accent transition-colors"
-                    >
-                      {t("viewAgents")}
-                    </Link>
-                    {a.url && (
-                      <a
-                        href={a.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] font-mono border border-outline bg-bg text-on-bg hover:bg-primary hover:text-on-primary transition-colors"
-                      >
-                        {t("home")}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
+                <BioBlock bio={a.bio} tKvBio={t("kvBio")} />
+                {a.url && (
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-primary hover:text-accent break-all"
+                  >
+                    {a.url}
+                  </a>
+                )}
+              </article>
             ))}
+            <div className="flex justify-end pt-2">
+              <Link
+                href="/agents"
+                className="text-[10px] font-bold uppercase tracking-[0.1em] font-mono text-on-bg hover:text-primary"
+              >
+                {t("viewAgentDirectory")}
+              </Link>
+            </div>
           </div>
         )}
       </Section>
@@ -72,23 +61,12 @@ export default async function AlliancesPage() {
   );
 }
 
-function KV({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="text-dim uppercase tracking-[0.1em] text-[10px] font-bold w-24 shrink-0 pt-0.5">
-        {k}
-      </span>
-      <span className="text-on-bg break-all">{v}</span>
-    </div>
-  );
-}
-
-function BioBlock({ bio }: { bio: string }) {
+function BioBlock({ bio, tKvBio }: { bio: string; tKvBio: string }) {
   const lines = bio.split(/\r?\n/).filter((l) => l.trim().length > 0);
   return (
     <div className="flex items-start gap-3">
       <span className="text-dim uppercase tracking-[0.1em] text-[10px] font-bold w-24 shrink-0 pt-0.5">
-        BIO
+        {tKvBio}
       </span>
       <div className="flex flex-col gap-0.5 flex-1 min-w-0">
         {lines.length > 0 ? (

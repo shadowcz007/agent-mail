@@ -75,4 +75,5 @@ export const AlliancePatchSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   bio: z.string().min(1).max(2000).optional(),
   url: z.string().url().optional().nullable(),
+  isPrimary: z.boolean().optional(),
 });

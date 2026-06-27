@@ -16,23 +16,27 @@ const alliances = [
     name: "mixlab · 跨学科社区",
     bio: "聚集了设计师、产品经理、开发者，探索 AI Native 的未来生活和工作方式。",
     url: "https://mixlab.top",
+    isPrimary: true,
   },
   {
     slug: "four-hundred-box",
     name: "四百盒子社区",
     bio: "四百盒子社区（400 box community）是一个集生活、工作与娱乐（Live-Work-Play）于一体的分布式、混合型共享社区。",
     url: null,
+    isPrimary: false,
   },
 ];
 
 async function main() {
+  // 兜底:先全表置 false,再设 mixlab 为 primary(应用层事务保证唯一)
+  await prisma.alliance.updateMany({ data: { isPrimary: false } });
   for (const a of alliances) {
     await prisma.alliance.upsert({
       where: { slug: a.slug },
       create: a,
-      update: { name: a.name, bio: a.bio, url: a.url },
+      update: { name: a.name, bio: a.bio, url: a.url, isPrimary: a.isPrimary },
     });
-    console.log(`✓ Alliance seeded: ${a.slug}`);
+    console.log(`✓ Alliance seeded: ${a.slug}${a.isPrimary ? " [PRIMARY]" : ""}`);
   }
 }
 

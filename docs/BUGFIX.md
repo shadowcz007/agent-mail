@@ -5,7 +5,7 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — i18n 补漏:删冗余 HEADER STRIP 装饰符 + 7 处硬编码英文 UI 接入字典(STATUS chip / Section title / KV 标签 / H1 / form label)(详见 §-5)。
+> **最近更新**:2026-06-27 — primary alliance 改造:`Alliance.isPrimary` 全局唯一主联盟 + 新注册 Agent 自动归入 + 4 页面改造 + 2 API 事务 + 13 i18n keys(详见 §-6)。
 
 ---
 
@@ -104,6 +104,118 @@ grep -rnE '>[A-Z][A-Z 0-9_/:-]{3,}<' src/app/ --include="*.tsx"
 | `src/i18n/messages/{zh-CN,en}.ts` | 各加 9 个 key |
 | `docs/SPEC.md` | §3.8.1 装饰符清单更新 |
 | `docs/BUGFIX.md` | 新增本节(§-5) |
+
+---
+
+## -6. Primary Alliance 改造 · `Alliance.isPrimary` 全局唯一 + 注册自动归入
+
+**时间**:2026-06-27
+
+### 症状
+
+agent-mail 已有 Alliance 模型 + `AgentAlliance` join 表(admin 手动设置 Agent ↔ Alliance 关系),但**没有"主联盟"概念**,导致两个体验问题:
+
+1. **首页 ALLIANCES** 一股脑列出全部联盟(当前 2 个:`mixlab` / `四百盒子社区`),新用户看不出"我注册后会归入哪个社区"。
+2. **每个 Agent 与 Alliance 的关系完全由 admin 手动设置**,注册时新 agent 默认"无联盟",`/agents/[email]` profile 显示 "—",需 admin 后续补加。未自动化。
+
+### 根因
+
+`SPEC.md §3.3` 设计阶段未列出"主联盟"概念;`Alliance` 模型只有 `slug` / `name` / `bio` / `url` 4 个字段,无归属标记。
+
+### 修复
+
+#### A. Schema + 共享 helper
+- `prisma/schema.prisma` `Alliance` 模型加 `isPrimary Boolean @default(false)` + `@@index([isPrimary])`
+- 新增 `src/lib/alliances.ts`:`getPrimaryAllianceOrFallback()` 返回 `{ alliance, autoSelected }`(无主时降级 createdAt asc 第一条)
+- `src/lib/validate.ts` `AlliancePatchSchema` 加 `isPrimary: z.boolean().optional()`
+- `prisma/seed.ts` 在 mixlab 标 `isPrimary: true`,并先 `updateMany({ isPrimary: false })` 兜底
+
+#### B. 3 个 API 改动
+- `POST /api/agents/register`:事务内 `tx.agent.create` → `tx.alliance.findFirst({ where: { isPrimary: true } })` → 有则 `tx.agentAlliance.create`;响应加 `primaryAllianceSlug: string | null`
+- `PATCH /api/admin/alliances/[slug]`:`isPrimary: true` 时事务内全表置 false → 设当前 true(应用层 enforcer 保证唯一)
+- `GET /api/alliances`:响应加 `isPrimary: boolean`,排序 `[isPrimary desc, createdAt asc]`
+
+#### C. 4 页面 + 1 client component
+- `src/app/page.tsx`:删 `findMany` 改用 `getPrimaryAllianceOrFallback()`;ALLIANCES Section 整段替换为 1 个联盟卡片(name + bio + url + chip);底部 `[ > MORE ALLIANCES → ]` 链接(只在 allianceCount > 1 时显示);chip 用 `PRIMARY` (accent) / `AUTO-SELECTED` (warning)
+- `src/app/alliances/page.tsx`:精简版(无 HEADER STRIP,无 6 KV,无按钮);主联盟加 `PRIMARY` chip;底部 `[ > AGENT DIRECTORY → ]` 链接
+- `src/app/admin/alliances/page.tsx`:顶部新增 "CURRENT PRIMARY" Section(显示主联盟 name + slug + chip,无主则 warning);每行 non-primary 加 `<SetPrimaryButton />`;主联盟行不显示按钮
+- `src/app/admin/alliances/[slug]/edit-form.tsx` + `page.tsx`:form 加 `isPrimary` checkbox + label + hint;底部加 note 说明"切换主联盟不影响已注册 Agent";`Initial` interface 加 `isPrimary: boolean`
+- `src/app/admin/alliances/set-primary-button.tsx`(新):照搬 `delete-button.tsx` 模式(`use client` + `apiRequest` + `useI18n` + `confirm()`);调 `PATCH` body `{ isPrimary: true }`
+
+#### D. i18n 字典(13 keys × 2 langs = 26 entries)
+
+| 命名空间 | keys |
+|---|---|
+| `home.*` | `alliancesMore` / `alliancesPrimaryChip` / `alliancesAutoSelected` |
+| `alliances.*` | `primaryChip` / `viewAgentDirectory` |
+| `admin.*` | `currentPrimaryLabel` / `currentPrimaryNone` / `setPrimaryButton` / `setPrimaryConfirm` / `allianceIsPrimary` / `alliancePrimaryFieldLabel` / `alliancePrimaryFieldHint` / `alliancePrimaryFieldNote` |
+
+### 统计
+
+| 维度 | 数量 |
+|---|---|
+| 修改文件 | **15**(.ts/.tsx/.prisma) |
+| 新增文件 | **2**(`alliances.ts` helper + `set-primary-button.tsx` client) |
+| 新增字典 key | **13**(× 2 langs = 26) |
+| 新增 API 字段 | **3**(`isPrimary` PATCH body / GET response / `primaryAllianceSlug` register response) |
+| Prisma 字段 | 1(`isPrimary`)+ 索引 1 |
+| 协议层变更 | **0**(向后兼容) |
+
+### 设计决策(已与用户确认)
+
+1. **不回填**已有 Agent(老 agent 保持原状,profile 仍能展示 "无联盟")
+2. **主联盟归属存哪** = `Alliance.isPrimary`(全局唯一),不用 per-agent 字段
+3. **首页无主联盟时** = fallback to `createdAt asc` 第一条 + `AUTO-SELECTED` chip 提示(不 404)
+4. **注册时无主联盟** = 不报错,跳过 `AgentAlliance` 写入(公开 API 不被配置阻塞)
+5. **PATCH isPrimary=false 显式允许**(便于批量重选)
+6. **DB 不加 `@@unique([isPrimary])`**(Prisma partial unique 不支持单列;应用层事务保证)
+
+### E2E 验证(本轮 commit 后跑)
+
+| # | 场景 | 期望 |
+|---|---|---|
+| 1 | 全新空库,跑 seed,访问 `/` | 显示 mixlab + PRIMARY chip |
+| 2 | 手动 `updateMany({ isPrimary: false })`,访问 `/` | 降级到 createdAt asc 第一条 + AUTO-SELECTED chip(warning tone) |
+| 3 | 完全空 Alliance 表,访问 `/` | 显示 `noAlliances` |
+| 4 | `/admin/alliances` 点击 non-primary 行 `[ > SET AS PRIMARY ]` | 该行变 PRIMARY chip,旧主联盟 PRIMARY 消失 |
+| 5 | 注册新 agent | 响应 `primaryAllianceSlug` 是当前主;DB `AgentAlliance` 表多一条 |
+| 6 | 注册前先取消主联盟(PATCH isPrimary=false) | 响应 `primaryAllianceSlug: null`;AgentAlliance 表无新行 |
+| 7 | 切到 `/alliances` | 多个联盟精简卡片,主联盟顶部 + PRIMARY chip |
+| 8 | `/admin/alliances/[slug]/edit-form` 勾选 isPrimary | 保存后,该联盟成为主联盟(其他自动 unset) |
+| 9 | 切到 en locale,所有新加 key 显示英文 | 全部英文,装饰符 `[ > ... ]` / `//` 跨语言一致 |
+| 10 | DELETE 主联盟 | 联盟删除;访问 `/` 降级 fallback |
+| 11 | 切换主联盟后,老 agent 的 AgentAlliance 记录 | **不变**(不回填) |
+| 12 | 并发 2 个 PATCH 同时设不同 alliance 为 primary | DB 行锁串行化,最终只有 1 个 isPrimary=true |
+
+### 风险与已知限制
+
+1. **Prisma partial unique 不支持单列** → 应用层事务保证;并发 PATCH 时 PostgreSQL 行锁串行化
+2. **首页 fallback 视觉降级**:`AUTO-SELECTED` chip 用 warning tone + admin `/admin/alliances` 顶部双层提示
+3. **i18n key 冗余**:3 个 "PRIMARY" key(`home.alliancesPrimaryChip` / `alliances.primaryChip` / `admin.allianceIsPrimary`)语义不同,保留便于将来差异化
+4. **edit-form checkbox 未勾选**:`fd.get("isPrimary") === "on"` 为 false → 不会 unset(需显式取消要走"非 primary 行 → 不勾 → 保存")
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `prisma/schema.prisma` | Alliance 加 `isPrimary` + 索引 |
+| `prisma/seed.ts` | mixlab 标 primary + 全表置 false 兜底 |
+| `src/lib/validate.ts` | AlliancePatchSchema 加 `isPrimary` |
+| `src/lib/alliances.ts` (新) | getPrimaryAllianceOrFallback helper |
+| `src/app/api/agents/register/route.ts` | 事务内写 AgentAlliance + 响应 `primaryAllianceSlug` |
+| `src/app/api/admin/alliances/[slug]/route.ts` | PATCH 事务 + 响应 `isPrimary` |
+| `src/app/api/alliances/route.ts` | GET select `isPrimary` + 排序 |
+| `src/app/page.tsx` | 首页只显示主联盟 + more 链接 |
+| `src/app/alliances/page.tsx` | 精简卡片(name/bio/url) + 主联盟 chip + AGENT DIRECTORY 链接 |
+| `src/app/admin/alliances/page.tsx` | CURRENT PRIMARY 块 + SET AS PRIMARY 按钮 |
+| `src/app/admin/alliances/[slug]/edit-form.tsx` | isPrimary checkbox + hint + note |
+| `src/app/admin/alliances/[slug]/page.tsx` | initial 加 `isPrimary: alliance.isPrimary` |
+| `src/app/admin/alliances/set-primary-button.tsx` (新) | client component |
+| `src/i18n/messages/{zh-CN,en}.ts` | 各加 13 keys |
+| `docs/SPEC.md` | §3.3 加 isPrimary 字段 + 主联盟语义 + 关键约束改"自动归入" |
+| `docs/LAYOUT.md` | §3.1 首页 ALLIANCES 草图重画;§3.7 /alliances 精简版 |
+| `docs/API.md` | §0.1 register 响应 + `primaryAllianceSlug`;§1.6 GET 加 `isPrimary`;§4.2.2 PATCH 事务语义 |
+| `docs/BUGFIX.md` | 本节 |
 
 ---
 
@@ -949,21 +1061,26 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | 功能缺失 | 2(admin promote/demote、account self-delete) |
 | 重构 / 复用 | 1(EmailInput 抽取) |
 | 部署 / 基础设施 | 1(Vercel P1002) |
-| i18n 改造 | 1(§-2:全站 zh-CN/en + API 错误 code 化) |
+| i18n 改造 | 2(§-2:全站 zh-CN/en + API 错误 code 化;§-5:补漏 7 处硬编码 + 删 HEADER STRIP) |
 | Agent.md 协议扩展 | 1(§-3:Outreach 6 步 SOP) |
 | UI 简化 | 1(§-4.1/4.2:删 PUBLISH EVENT + SEND EMAIL 按钮) |
+| 联盟主/从改造 | 1(§-6:`Alliance.isPrimary` + 注册自动归入) |
 
 | 文件改动统计 | 数量 |
 |---|---|
-| 新建文件 | 10 |
-| 修改文件 | 14 |
+| 新建文件 | 12(+ 2:alliances.ts helper + set-primary-button.tsx) |
+| 修改文件 | 18(+ 4:schema/seed/validate/3API/4page/2dict/4docs) |
 | 新增 API 端点 | 3(promote / demote / self-delete) |
+| 新增 API 字段 | 6(WEAK_PASSWORD 3 子类 + isPrimary×2 + primaryAllianceSlug) |
 | 新增错误码 | 1(LAST_ADMIN) |
 | 新增公共页面 | 2(`/agents`、`/events`) |
-| 新增 UI 组件 | 2(EmailInput、DeleteAcctButton) |
+| 新增 UI 组件 | 4(EmailInput、DeleteAcctButton、SetPrimaryButton、alliances helper) |
+| 新增字典 key | 261(§-2:248 + §-5:9 + §-6:13) |
+| 新增 Prisma 字段 | 1(`Alliance.isPrimary` + 索引) |
 
 | Git 提交(全部已推送 main) | 内容 |
 |---|---|
+| `c95e0e5` | fix(i18n): remove redundant HEADER STRIP + 7 hardcoded UI strings → dict(§-5) |
 | `8819eee` | feat: full i18n + Agent.md Outreach SOP + 删 2 个 GUI 按钮(67 files, +2934/-611) |
 | `f604e8a` | feat: enable [ DELETE ACCT ] 账户自删 |
 | `3ecc582` | refactor: EmailInput 抽取,6 处复用 |

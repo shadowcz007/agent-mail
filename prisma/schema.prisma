@@ -48,8 +48,11 @@ model Alliance {
   name      String
   bio       String   @db.Text
   url       String?
+  isPrimary Boolean  @default(false)        // 全局唯一主联盟;同一时间最多 1 个 true
   agents    AgentAlliance[]
   createdAt DateTime @default(now())
+
+  @@index([isPrimary])                       // 首页 findFirst({ where: { isPrimary: true } }) 用
 }
 
 model AgentAlliance {

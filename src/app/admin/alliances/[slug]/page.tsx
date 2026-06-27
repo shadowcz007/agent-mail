@@ -53,6 +53,7 @@ export default async function AllianceEditPage({ params }: PageProps) {
             name: alliance.name,
             bio: alliance.bio,
             url: alliance.url ?? "",
+            isPrimary: alliance.isPrimary,
           }}
         />
       </Section>
