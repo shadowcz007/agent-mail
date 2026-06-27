@@ -5,7 +5,74 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — 新增 Logout 303、EmailInput 抽取、邮箱下划线样式去除。
+> **最近更新**:2026-06-27 — 启用 `[ DELETE ACCT ]`,补全账户自删能力。
+
+---
+
+## -1. `[ DELETE ACCT ]` 按钮 disabled · 启用账户自删能力
+
+**时间**:2026-06-27
+**提交**:`f604e8a`
+
+### 症状
+`/dashboard` 上 `[ DELETE ACCT ]` 按钮是 `disabled` 状态,title="MVP 暂未实现"。
+用户希望可以点击。
+
+### 根因
+之前作者留了 UI 占位但没实现:
+```tsx
+<Button variant="danger" disabled title="MVP 暂未实现">
+  [ DELETE ACCT ]
+</Button>
+```
+
+### 修复(完整功能)
+**API**: `DELETE /api/agents/[email]` (T3 Session)
+| 场景 | 行为 |
+|---|---|
+| 删自己 + 非唯一 admin | 303 redirect `/` + clear session cookie |
+| 删别人(其他 email) | 403 FORBIDDEN |
+| 自己是唯一 admin | 409 LAST_ADMIN(引导去 `/admin/agents` transfer) |
+| 不存在的 email | 404 AGENT_NOT_FOUND |
+
+事务里同时清理 `PasswordResetToken`(`AgentAlliance` + `Event` 由 Prisma cascade 自动清)。
+
+**UI**: `src/app/dashboard/DeleteAcctButton.tsx`
+| 状态 | 表现 |
+|---|---|
+| 普通用户 | clickable,点开 inline 确认面板,要求输入 `DELETE` 字符串才能提交 |
+| 唯一 admin | `disabled` + 引导:"去 `/admin/agents` transfer 身份后再删" |
+| 有 events | 警告:"⚠ Schema 级联会一并删除你的所有 events" |
+
+**`dashboard/page.tsx`** 增加 2 个查询:
+- `adminCount` — 决定 isLastAdmin
+- `myEventCount` — 决定 hasEvents 警告
+
+### ⚠️ 已知行为(待优化)
+当前 schema `Event.agent` 是 `onDelete: Cascade` —— **删账户会一并删除该用户的全部 events**(public history)。
+
+如果想保留历史(更符合 Event Board 设计意图),需要:
+1. Schema 改 `Event.agent` → `SetNull`,`agentEmail` → `String?`
+2. Prisma migrate deploy
+3. 改 event 渲染逻辑处理 `agent === null` 情况
+
+我没在本次提交里做这个改动,因为它需要 schema migration + 多个查询处理 nullable agent。
+如果需要,作为下一轮提交。
+
+### E2E 验证(5/5 通过)
+| Case | 结果 |
+|---|---|
+| Register + DELETE self | 303 + cookie cleared ✓ |
+| GET 删后 agent | 401 UNAUTHENTICATED(cookie cleared) ✓ |
+| alice 删 admin | 403 FORBIDDEN ✓ |
+| 唯一 admin 删自己 | 409 LAST_ADMIN ✓ |
+| Admin dashboard 渲染 | `disabled` + BLOCKED 提示 ✓ |
+| Alice dashboard 渲染 | clickable button ✓ |
+
+### 涉及文件
+- `src/app/api/agents/[email]/route.ts` — 加 DELETE handler
+- `src/app/dashboard/DeleteAcctButton.tsx` — 新建(client)
+- `src/app/dashboard/page.tsx` — 接入 + 加 adminCount / myEventCount 查询
 
 ---
 
@@ -447,21 +514,22 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 | 路由 / 页面缺失 | 1(`/agents`、`/events`) |
 | 客户端状态 bug | 3(ReplyForm currentTarget、TopBar login、Logout 204) |
 | 文案 / 占位 | 3(GitHub URL、/index.md、邮箱下划线) |
-| 功能缺失 | 1(admin promote/demote) |
+| 功能缺失 | 2(admin promote/demote、account self-delete) |
 | 重构 / 复用 | 1(EmailInput 抽取) |
 | 部署 / 基础设施 | 1(Vercel P1002) |
 
 | 文件改动统计 | 数量 |
 |---|---|
-| 新建文件 | 9 |
-| 修改文件 | 13 |
-| 新增 API 端点 | 2(promote / demote) |
+| 新建文件 | 10 |
+| 修改文件 | 14 |
+| 新增 API 端点 | 3(promote / demote / self-delete) |
 | 新增错误码 | 1(LAST_ADMIN) |
 | 新增公共页面 | 2(`/agents`、`/events`) |
-| 新增 UI 组件 | 1(EmailInput) |
+| 新增 UI 组件 | 2(EmailInput、DeleteAcctButton) |
 
 | Git 提交(全部已推送 main) | 内容 |
 |---|---|
+| `f604e8a` | feat: enable [ DELETE ACCT ] 账户自删 |
 | `3ecc582` | refactor: EmailInput 抽取,6 处复用 |
 | `c160e74` | style: 邮箱输入框去除下划线 |
 | `879a760` | fix: Logout 返回 303 而非 204 |
@@ -493,3 +561,6 @@ password: AdminPass123  (DEPLOY.md 测试用的密码)
 8. **重复视觉必抽取**:6 处邮箱输入的 `[ input ]@agent.qq.com` 重复 95 行,
    抽成 EmailInput 后净删 17 行,改一次样式全站生效。
    **复盘标准**:复制粘贴 ≥ 3 处就该抽组件。
+9. **disabled 按钮 = 未完成的功能债**:留着 `disabled` + "MVP 暂未实现" 的按钮
+   是技术债 —— 用户会反复尝试并报告 bug。要么实现,要么不渲染。
+   这次的 `[ DELETE ACCT ]` 拖延到上线后才补全,是反例。
