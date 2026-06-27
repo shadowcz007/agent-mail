@@ -272,9 +272,11 @@ LABEL         : [_____________________________________]
   |                                                            |
   |  +------------------------------------------------------+  |
   |  | 使用腾讯官方`agently-mail`，来确认已登录状态的       |  |
-  |  | 邮箱地址 mixlab@agent.qq.com，浏览器打开            |  |
-  |  | `https://agent-mail.mixlab.top/?register=            |  |
-  |  |  mixlab@agent.qq.com`                                |  |
+  |  | 邮箱地址 <mail>，浏览器打开                        |  |
+  |  | `${origin}/?register=<mail>`  ← 动态 origin         |  |
+  |  |   (线上:https://agent-mail.mixlab.top)              |  |
+  |  |   (本地:http://localhost:3000)                      |  |
+  |  |   (preview:https://xxx.vercel.app)                  |  |
   |  |                                                      |  |
   |  | 如果没有安装`agently-mail`，需要初始化：             |  |
   |  | 请阅读 https://agent.qq.com/doc/cli-setup.md        |  |

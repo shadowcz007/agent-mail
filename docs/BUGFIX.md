@@ -41,10 +41,11 @@
   - 底部:`[ > 复制提示词 ]`(primary)+ `[ 取消 ]`(secondary)
 - 提示词结构(2 段,以 `\n\n` 分隔):
   ```
-  使用腾讯官方`agently-mail`，来确认已登录状态的邮箱地址 <mail>，浏览器打开 `https://agent-mail.mixlab.top/?register=<mail>`
+  使用腾讯官方`agently-mail`，来确认已登录状态的邮箱地址 <mail>，浏览器打开 `${origin}/?register=<mail>`
 
   如果没有安装`agently-mail`，需要初始化：请阅读 https://agent.qq.com/doc/cli-setup.md 文档，按照步骤安装并配置 Agent Mail CLI。
   ```
+- **`<origin>` 动态读取**:由 `register/page.tsx` (server)从 `headers()` 读 `host` + `x-forwarded-proto` 拼出 `${proto}://${host}` 作为 prop 传入。**线上 / Vercel preview / 本地 dev / 自定义域名各自显示正确的访问入口**,不硬编码 mixlab.top。客户端 prop 缺省时 fallback 到线上默认(零破坏)。
 - `<mail>` 替换优先级:`props.email` > `i18n.mailPlaceholder`(`<your-email@agent.qq.com>`)
 - 复制走 `navigator.clipboard.writeText`(参考 `ApiKeyManager.tsx` + `AgentMdHero.tsx` 现有模式);不可用显示 `errors.clipboardUnavailable`
 - 复制成功 3 秒内显示 `( DONE ) 已复制`(装饰符跨语言一致)
@@ -55,9 +56,18 @@
 `src/app/register/page.tsx` 在主 Section 后新增第二 Section:
 
 ```
+// 1. server 端从 headers 拼 origin
+const headerStore = await headers();
+const host = headerStore.get("host") ?? "agent-mail.mixlab.top";
+const proto =
+  headerStore.get("x-forwarded-proto") ??
+  (process.env.NODE_ENV === "production" ? "https" : "http");
+const origin = `${proto}://${host}`;
+
+// 2. 传给 client component
 <Section title={tQuick("sectionTitle")}>
   <PromptLine>{tQuick("sectionIntro")}</PromptLine>
-  <AgentQuickAccessButton email={prefillEmail} />
+  <AgentQuickAccessButton email={prefillEmail} origin={origin} />
 </Section>
 ```
 
@@ -72,13 +82,13 @@
 
 | 文件 | 改动 |
 |---|---|
-| `src/app/register/AgentQuickAccessButton.tsx` | **新建**(client component + modal) |
-| `src/app/register/page.tsx` | 加第二 Section 接入按钮 |
+| `src/app/register/AgentQuickAccessButton.tsx` | **新建**(client component + modal + `origin?: string` prop) |
+| `src/app/register/page.tsx` | 加第二 Section 接入按钮 + `headers()` 拼 `origin` 传入 |
 | `src/i18n/messages/types.ts` | Messages 加 agentQuickAccess |
 | `src/i18n/messages/zh-CN.ts` | +10 keys |
 | `src/i18n/messages/en.ts` | +10 keys |
 | `docs/SPEC.md` | §3.5 路由表 `/register` 行说明更新 |
-| `docs/LAYOUT.md` | §3.3 ASCII 加 Agent 一键接入 + modal |
+| `docs/LAYOUT.md` | §3.3 ASCII 加 Agent 一键接入 + modal(URL 用 `${origin}` 占位) |
 | `docs/BUGFIX.md` | 本节 §-12 |
 
 ### 验证
@@ -89,6 +99,7 @@
 - 邮箱替换 `<mail>`:传 `mixlab@agent.qq.com` → prompt 含 `mixlab@agent.qq.com` + `?register=mixlab%40agent.qq.com`(`encodeURIComponent`)
 - 空 email → fallback 到 `<your-email@agent.qq.com>` 占位
 - ESC + backdrop click + cancel button 都能关 modal
+- **origin 动态性**:本地 dev `http://localhost:3000` / Vercel preview `https://xxx.vercel.app` / 线上 `https://agent-mail.mixlab.top` 各显示正确 URL
 
 ### 设计决策
 
@@ -101,6 +112,7 @@
 | D5 | **复制按钮 primary + cancel secondary** | 复制是 modal 的"主任务";cancel 视觉降权 |
 | D6 | **`<mail>` 默认占位走 i18n** | zh-CN 用 `<your-email@agent.qq.com>`,en 同(协议惯例跨语言一致) |
 | D7 | **不引入新 modal 组件库** | 当前 UI 风格(直角 + 等宽 + 黑底)与 headlessui 等不兼容,自写一个 60 行的 overlay 反而最贴 DESIGN §1 |
+| D8 | **register URL 用 `${origin}` 动态读取**(2026-06-27 改进) | 硬编码 `mixlab.top` 让 preview / 自定义域名 / 本地 dev 失效;server `headers()` 读 `host` + `x-forwarded-proto` 拼 origin,client fallback 到线上默认(零破坏) |
 
 ### 风险与已知限制
 
