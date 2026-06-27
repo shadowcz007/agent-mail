@@ -686,6 +686,15 @@ src/i18n/
 1. 回退到 en 字典
 2. 仍缺失则 dev 模式 `console.warn` + UI 显示 `__ns.key__`(显眼,易发现)
 
+**zh-CN 全面本地化原则**(2026-06-27 决策,BUGFIX §-7):
+- **主体文案** — Section title / H1 / 状态名 / 菜单名 / 按钮 / 提示 — **必须本地化**。zh-CN.ts 对应 key 应使用中文。
+- **装饰符** — `[ > ]` / `//` / `( WARNING )` / `[ ... ]` 等视觉锚点 — **跨语言一致**,不进字典,zh-CN/en 全部保留英文形式。
+- **已双语惯例**:
+  - `common.backToHome` = `"[ > BACK TO HOME ]"`(装饰符 + 英文 + 跨语言一致)
+  - `home.title` (zh-CN) = `"系统状态"` / (en) = `"SYSTEM STATUS"`(主体中文 vs 主体英文)
+  - `common.error` (zh-CN) = `"错误"` / (en) = `"ERROR"`
+- **不允许** zh-CN key 值与 en key 值**完全相同且都是英文**(违背 i18n 本意)。dev 模式下 `getTranslator` 自动 warn。
+
 #### 3.8.7 API 错误消息(code 化)
 
 **后端不再返回中文 message 字段**。前端根据 `error` code 通过 `errors.<code>` 字典查人类可读文案。

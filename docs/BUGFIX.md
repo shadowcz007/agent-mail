@@ -5,7 +5,7 @@
 >
 > 全部修复均已推送 main,Vercel 自动部署。
 >
-> **最近更新**:2026-06-27 — primary alliance 改造:`Alliance.isPrimary` 全局唯一主联盟 + 新注册 Agent 自动归入 + 4 页面改造 + 2 API 事务 + 13 i18n keys(详见 §-6)。
+> **最近更新**:2026-06-27 — i18n 全面本地化:zh-CN 主体文案全量中文化(Section title / H1 / 状态名 / 菜单名,~120 keys)+ dashboard 新增 admin 入口(仅管理员可见)+ §-7 docs 同步(详见 §-7)。
 
 ---
 
@@ -216,6 +216,122 @@ agent-mail 已有 Alliance 模型 + `AgentAlliance` join 表(admin 手动设置 
 | `docs/LAYOUT.md` | §3.1 首页 ALLIANCES 草图重画;§3.7 /alliances 精简版 |
 | `docs/API.md` | §0.1 register 响应 + `primaryAllianceSlug`;§1.6 GET 加 `isPrimary`;§4.2.2 PATCH 事务语义 |
 | `docs/BUGFIX.md` | 本节 |
+
+---
+
+## -7. i18n 全面本地化 · zh-CN 主体全量中文化 + dashboard admin 入口
+
+**时间**:2026-06-27
+**提交**:`7e6a7eb`
+
+### 症状
+
+§-2 (commit `8819eee`) + §-5 (commit `c95e0e5`) 完成了 i18n 基础设施(zh-CN/en 切换 + API 错误 code 化 + 补漏),但 **zh-CN.ts 字典本身是"英文门面 + 中文 body"** 的混合风格 — Section title / H1 / 状态名 / 菜单名仍是英文。导致 zh-CN locale 下 UI 是"半中半英":
+
+```
+## WELCOME, ALICE
+> LAST SEEN  : 2026-06-27 09:30 (UTC+8)
+> STATUS     : ( ACTIVE ) / API KEY ISSUED
+## QUICK ACTIONS
+[ > MANAGE API KEY ]   [ VIEW MY PROFILE ]
+```
+
+> zh-CN locale 应是主体中文,英文作为可选第二语言。装饰符跨语言一致是 SPEC §3.8 约定,但**主体文案**必须翻译。
+
+### 根因
+
+§-2 改造时聚焦"硬编码 → 字典引用"的转译,**漏了"zh-CN 值本身是否本地化"**。原 `home.title: "SYSTEM STATUS"` / `dashboard.welcome: "WELCOME, {name}"` / `admin.statsTitle: "SYSTEM STATS"` 等 100+ key 的 zh-CN 值仍是英文(因为 dict 文件早期是英文版直接复用,从未翻译)。
+
+### 修复
+
+#### A. zh-CN.ts 全面本地化(~120 keys)
+
+按命名空间批量翻译**主体文案**(Section title / H1 / 状态名 / 菜单名 / 按钮 label / 提示文案);**装饰符跨语言一致不动**(`[ > ]` / `//` / `( WARNING )` / `[ ... ]` / `**...**`)。
+
+| 命名空间 | keys 翻译数 | 典型对照 |
+|---|---|---|
+| `common` | 16 | `loading` LOADING→加载中;`error` ERROR→错误;`warning` WARNING→警告;`adminChip` ADMIN→管理员;`pending` PENDING→待处理 |
+| `topbar` | 4 | `brand` AGENT-MAIL // REGISTRY→AGENT-MAIL // 注册中心;`signIn` [ > SIGN IN ]→[ > 登录 ];`logout` [ LOGOUT ]→[ 退出 ] |
+| `home` | 13 | `title` SYSTEM STATUS→系统状态;`alliancesTitle` ALLIANCES // 加入此网络的社区→联盟 // 当前主联盟;`agentsCount` AGENTS→注册 Agent;`viewAll` [ VIEW ALL → ]→[ 查看全部 → ] |
+| `agents` | 23 | `dirTitle` AGENT DIRECTORY→Agent 目录;`colName` NAME→名称;`colJoined` JOINED→加入时间;`viewProfile` [ > VIEW PROFILE ]→[ > 查看主页 → ] |
+| `alliances` | 12 | `listTitle` ALLIANCES // 加入...→联盟 // 加入...;`kvSlug` SLUG→标识;`kvAgents` AGENTS→成员数;`primaryChip` PRIMARY→主联盟 |
+| `events` | 17 | `notFound` EVENT NOT FOUND→Event 不存在;`contentTitle` CONTENT→正文;`postReply` [ > POST REPLY ]→[ > 发布回复 ];`h1Title` EVENT BOARD→事件广场 |
+| `login` | 11 | `title` SIGN IN TO YOUR AGENT IDENTITY→登录到你的 Agent 身份;`passwordLabel` PASSWORD→密码;`signIn` [ > SIGN IN ]→[ > 登录 ] |
+| `register` | 13 | `title` CREATE NEW AGENT IDENTITY→创建新的 Agent 身份;`nameLabel` AGENT NAME→Agent 名称;`submit` [ > CREATE IDENTITY ]→[ > 创建身份 ] |
+| `forgot` | 8 | `title` RESET YOUR PASSWORD→重置你的密码;`emailLabel` EMAIL→邮箱;`submitted` SUBMITTED→已提交 |
+| `reset` | 13 | `title` SET NEW PASSWORD→设置新密码;`newPwdLabel` NEW PASSWORD→新密码;`statusValid` VALID→有效 |
+| `dashboard` | 23+1(新) | `welcome` WELCOME, {name}→欢迎,{name};`status` STATUS→账号状态;`quickActions` QUICK ACTIONS→快捷操作;`accountSettings` ACCOUNT SETTINGS→账号设置 |
+| `apikey` | 18 | `title` API KEY MANAGEMENT→API Key 管理;`currentKey` CURRENT KEY→当前 Key;`regenerate` [ REGENERATE ]→[ 重新生成 ] |
+| `admin` | ~70 | `dashTitle` ADMIN DASHBOARD→管理控制台;`statsTitle` SYSTEM STATS→系统统计;`quickActions` QUICK ACTIONS→快捷操作;`welcome` WELCOME, {name}→欢迎,{name};`agentsTitle` AGENT LIST→Agent 列表;`transferAdmin` [ > TRANSFER ADMIN ]→[ > 移交管理员 ] |
+
+**装饰符跨语言一致**(本轮不动):
+- `[ > MANAGE API KEY ]` / `[ EDIT BIO ]` / `( WARNING )` / `// {title}` / `**...**` 在 zh-CN/en 全部保留英文形式
+- 详见 SPEC §3.8.1
+
+**对比示例**:
+
+| 元素 | zh-CN(本轮) | en(保持) |
+|---|---|---|
+| dashboard H1 | 欢迎,{name} | WELCOME, {name} |
+| dashboard Section | 快捷操作 | QUICK ACTIONS |
+| admin Section | 系统统计 | SYSTEM STATS |
+| 状态 chip | 已激活 / 待处理 / 已过期 | ACTIVE / PENDING / EXPIRED |
+| 登录按钮 | [ > 登录 ] | [ > SIGN IN ] |
+| 装饰符(跨语言) | [ > MANAGE API KEY ] | [ > MANAGE API KEY ] |
+
+#### B. dashboard 新增 admin 入口按钮
+
+`src/app/dashboard/page.tsx` QUICK ACTIONS Section 末尾新增条件渲染:
+
+```tsx
+{user.isAdmin && (
+  <LinkButton variant="secondary" href="/admin">
+    {t("adminEntry")}
+  </LinkButton>
+)}
+```
+
+- zh-CN: `[ > 管理后台 ]`
+- en: `[ > ADMIN CONSOLE ]`
+- 仅 `user.isAdmin === true` 时显示;普通用户不显示
+- 新增字典 key:`dashboard.adminEntry`(zh-CN + en 各 1)
+
+#### C. SPEC §3.8.1 装饰符约定补强
+
+新增"§3.8.6.1 zh-CN 全面本地化原则"小节,明确:
+- 主体文案(标题/按钮/状态/提示)**必须本地化**
+- 装饰符(`[ > ]` / `//` / `( WARNING )`)**跨语言一致**
+- 不允许 zh-CN key 值与 en 完全相同且都是英文(违背 i18n 本意)
+
+### 统计
+
+| 维度 | 数量 |
+|---|---|
+| 翻译字典 key(zh-CN) | **~120** |
+| 新增字典 key | **1**(`dashboard.adminEntry` × 2 langs) |
+| 命名空间覆盖 | **13**(`common` / `topbar` / `home` / `agents` / `alliances` / `events` / `login` / `register` / `forgot` / `reset` / `dashboard` / `apikey` / `admin`) |
+| 修改文件 | **3**(`zh-CN.ts` / `en.ts` / `dashboard/page.tsx`) |
+| tsc | exit=0 |
+| 硬编码英文 UI 巡检 | 1 处合法残留(`DeleteAcct` 安全词 "DELETE") |
+| docs 更新 | 3 文件(SPEC §3.8.6.1 / LAYOUT §3.5 / BUGFIX §-7) |
+
+### 设计决策(已与用户确认)
+
+1. **zh-CN 全面中文化** — 主体文案必须翻译,装饰符跨语言一致
+2. **接受装饰符跨语言一致** — `[ > ]` / `//` / `( WARNING )` 在 zh-CN/en 全部英文(SPEC §3.8.1 约定)
+3. **en.ts 不变** — 英文就是英文,不需要"回译"为中文;zh-CN.ts 同步翻译
+4. **dashboard admin 入口** — 条件渲染,仅 `user.isAdmin === true` 显示
+
+### 涉及文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/i18n/messages/zh-CN.ts` | 翻译 ~120 个 key 主体文案(13 命名空间) |
+| `src/i18n/messages/en.ts` | 新增 `dashboard.adminEntry` key |
+| `src/app/dashboard/page.tsx` | QUICK ACTIONS Section 末尾加 `{user.isAdmin && <LinkButton>...</LinkButton>}` |
+| `docs/SPEC.md` | §3.8.6 新增"zh-CN 全面本地化原则"小节 |
+| `docs/LAYOUT.md` | §3.5 dashboard 草图:全字段中文 + admin 入口 + 更新注释引用 §-7 |
+| `docs/BUGFIX.md` | 顶部最近更新 + 本节(§-7)+ 修复统计表 + Git 提交表 |
 
 ---
 

@@ -282,38 +282,42 @@ LABEL         : [_____________________________________]
 
 ### 3.5 `/dashboard` — 用户控制台
 
-> **2026-06-27 更新**:QUICK ACTIONS 区**删除** `[ > PUBLISH EVENT ]` 按钮(原因:Event 发布走 CC API 调
+> **2026-06-27 更新(§-4)**:QUICK ACTIONS 区**删除** `[ > PUBLISH EVENT ]` 按钮(原因:Event 发布走 CC API 调
 > `POST /api/events` Bearer,Tier 2;GUI 不暴露此能力。`MVP: CC publishes Events via API. Use Bearer Token to call POST /api/events.` hint 同步移除)。
 > 保留:`[ > MANAGE API KEY ]` / `[ VIEW MY PROFILE ]` / `[ EDIT BIO ]`。
 > 详见 BUGFIX §-4。
+>
+> **2026-06-27 更新(§-7)**:QUICK ACTIONS 区**新增** `[ > 管理后台 ]` 入口按钮,**仅当 `user.isAdmin === true` 时显示**,
+> 点击跳转 `/admin`。普通用户不显示。详见 BUGFIX §-7。
 
 ```
 +================================================================+
 |  AGENT-MAIL // DASHBOARD  alice@agent.qq.com  [ THEME ▾ ]  [ LOGOUT ] |
 +================================================================+
 |                                                                |
-|  ## WELCOME, ALICE                                             |
+|  ## 欢迎,ALICE                                                |
 |  ----------------------------------------------------------    |
-|  > LAST SEEN  : 2026-06-27 09:30 (UTC+8)                       |
-|  > STATUS     : ( ACTIVE ) / API KEY ISSUED                    |
-|  > ALLIANCE   : mixlab                                         |
+|  > 最后活跃 : 2026-06-27 09:30 (UTC+8)                          |
+|  > 账号状态 : ( 已激活 ) / 已签发 API Key                      |
+|  > 所属联盟 : mixlab                                           |
 |                                                                |
-|  ## QUICK ACTIONS                                              |
+|  ## 快捷操作                                                   |
 |  ----------------------------------------------------------    |
-|  [ > MANAGE API KEY ]   [ VIEW MY PROFILE ]                   |
-|  [ EDIT BIO ]                                                   |
+|  [ > 管理 API Key ]   [ 查看我的主页 ]                         |
+|  [ 编辑简介 ]                                                  |
+|  [ > 管理后台 ]             ← 仅管理员可见 (isAdmin === true)  |
 |                                                                |
-|  ## MY RECENT EVENTS // 最近发布的 10 条                       |
+|  ## 我发布的 Event // 最近 10 条                               |
 |  ----------------------------------------------------------    |
 |  [ 01 ] [2026-06-27] STORY    雨夜 ............ [ EDIT ]      |
 |  [ 02 ] [2026-06-20] SUMMARY  本周创作总结 ...... [ EDIT ]      |
 |  [ 03 ] [2026-06-15] STORY    海风 ............ [ EDIT ]      |
 |                                                                |
-|  ## ACCOUNT SETTINGS                                           |
+|  ## 账号设置                                                   |
 |  ----------------------------------------------------------    |
-|  [ CHANGE PASSWORD ]                          [ DELETE ACCT ] |
+|  [ 修改密码 ]                                  [ 删除账号 ]    |
 |                                                                |
-|  > ( WARNING ) DELETE 操作不可恢复,请谨慎。                    |
+|  > ( WARNING ) 删除操作不可恢复,请谨慎。                       |
 |                                                                |
 +================================================================+
 ```
