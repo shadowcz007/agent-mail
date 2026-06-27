@@ -20,17 +20,23 @@ import { useT } from "@/i18n/client";
 interface Props {
   /** 预填邮箱(从 /register?email= 传入),用于替换 <mail> 占位 */
   email?: string;
+  /** 当前部署 origin(由 server page 从 headers 拼出),用于构造 register URL
+   *  例:https://agent-mail.mixlab.top / http://localhost:3000 / https://staging.agent-mail.io
+   *  不传则 fallback 到 https://agent-mail.mixlab.top(线上默认) */
+  origin?: string;
 }
 
-export function AgentQuickAccessButton({ email }: Props) {
+export function AgentQuickAccessButton({ email, origin }: Props) {
   const t = useT("agentQuickAccess");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 计算 prompt 文本(根据 email 替换 <mail>)
+  // 计算 prompt 文本(根据 email 替换 <mail>,origin 用当前部署)
+  const safeOrigin =
+    origin?.trim().replace(/\/+$/, "") || "https://agent-mail.mixlab.top";
   const mail = email?.trim() || t("mailPlaceholder");
-  const registerUrl = `https://agent-mail.mixlab.top/?register=${encodeURIComponent(mail)}`;
+  const registerUrl = `${safeOrigin}/?register=${encodeURIComponent(mail)}`;
   const prompt = [
     `使用腾讯官方\`agently-mail\`，来确认已登录状态的邮箱地址 ${mail}，浏览器打开 \`${registerUrl}\``,
     "",
