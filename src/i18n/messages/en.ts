@@ -255,6 +255,7 @@ const en: Messages = {
     deleteAcctCancel: "[ CANCEL ]",
     deleteWarning:
       "( WARNING ) DELETE is irreversible. Please be careful.",
+    adminEntry: "[ > ADMIN CONSOLE ]",
   },
 
   apikey: {

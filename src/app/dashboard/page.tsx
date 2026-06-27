@@ -84,6 +84,11 @@ export default async function DashboardPage() {
             {t("viewProfile")}
           </LinkButton>
           <EditBioTrigger bio={agent?.bio ?? ""} />
+          {user.isAdmin && (
+            <LinkButton variant="secondary" href="/admin">
+              {t("adminEntry")}
+            </LinkButton>
+          )}
         </div>
       </Section>
 
